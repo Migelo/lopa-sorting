@@ -10,17 +10,14 @@ parser.add_argument('--bins', metavar='bins', type=str,
                    help='file defining the wawelenghts bins')
 parser.add_argument('--merged_file', type=str, default="merged.lopa",
                    help='set the location of the merged file, by default it will be stored in the current directory under the name "merged.lopa"')
-parser.add_argument('-d','--remove-duplicates', dest='duplicates', action='store_true',
-                   help='removes the overlapping wawelenghts present in original files')
-parser.set_defaults(duplicates = False)
+#parser.add_argument('-n','--sub-bin-number', metavar='subbins', action='store_const',
+#                  help='set the number of subbin each bin will be split during calculations')
 
 args = parser.parse_args()
 #set the necessary parameters for parsing
 
 file_list = []
 file_list = glob.glob(args.folder+'/*.lopa')
-##file_list = glob.glob(args.folder+'/*.segment')
-#print(file_list())
 numberOfItems = len(file_list)
 #create a list off all the .lopa files
 
@@ -65,15 +62,42 @@ def bining(depthList):
                     tempList = np.delete(tempList, (0), axis=0)
                     tempList = np.delete(tempList, (0), axis=0)
                     tempList = tempList[np.argsort(tempList[:,1])] #sort by opacities
-                    f = open(reducedFileList[counter], "a")
-                    np.savetxt(f, tempList, fmt = '%.6e')
-                    #tempList = np.append(tempList, [0,0], axis = 0)
-                    #f.write('0' + '\n')
-                    #stepSize = len(tempList)//9
+
+                    numberOfSubbins = 10
+                    subbinSize = (singleBin[1] - singleBin[0]) / numberOfSubbins
+                    print('Subbin size: ' + str(singleBin[1]-singleBin[0]))
+                    deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
+                    subbinArray = np.array([0,0,0])
+                    for line in tempList:
+                        deltaLambda = deltaLambda + line[2]
+                        temp += line[1] * line[2] #opacity_i*deltaLambda_i
+                        if (deltaLambda >= subbinSize):
+                            end += beginning + deltaLambda
+                            beginning += deltaLambda
+                            deltaLambda = 0
+                            temp /= subbinSize
+                            subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
+                            temp = 0
+                        elif (np.array_equal(line,tempList[-1])):
+                            end += beginning + deltaLambda
+                            beginning += deltaLambda
+                            deltaLambda = 0
+                            temp /= subbinSize
+                            subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
+                            subbinArray = np.delete(subbinArray, (0), axis=0)
+                            f = open(reducedFileList[counter], "a")
+                            np.savetxt(f, subbinArray, fmt = '%.6e')
+                            f.close()
+                            temp = 0
+                                        
                     #tenValuesList = np.array([])
                     #for i in range(0, tempList, stepSize):
                     #tenValuesList = np.append(tenValuesList, tempList[i])
                     #with open(reducedFileList[counter], 'a') as f:
+                    ##f = open(reducedFileList[counter], "a")
+                    ##np.savetxt(f, tempList, fmt = '%.6e')
+                    ##f.write('\n')
+                    ##f.close()
                     break
         #print(tempList)
         counter = counter + 1
