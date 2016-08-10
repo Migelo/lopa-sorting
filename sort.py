@@ -42,101 +42,65 @@ def bining(depthList):
         sys.exit('Check your bins')
         #check if the bins are within range of wawelenghts
     counter = 0
-    for currentSegmentFile in segmentFileList:
+    for currentSegmentFile in segmentFileList: #for every segmentFile
         print('Reducing: ' + str(currentSegmentFile))
-        #f = open(reducedFileList[counter], 'a')
-        #data = np.loadtxt(currentSegmentFile) #loads the n-th segment file for processing
         data = [np.array(map(float, line.split())) for line in open(currentSegmentFile)]
-        for singleBin in binData:
+        for singleBin in binData: #for each bin
             tempList = np.array([[0,0,0],[0,0,0]]) #list for storing the data which we then write to the file in the end
             encounteredBinYet = False
-            for line in data:
+            for line in data: #for each line in a segmentFile
                 outsideOfTheBin = True
-                if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]):
+                if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin, append it
                     tempList = np.vstack([tempList, line])
                     outsideOfTheBin = False
                     encounteredBinYet = True
-                    if (np.array_equal(line, data[-1])):
-                        tempList = np.delete(tempList, (0), axis=0)
-                        tempList = np.delete(tempList, (0), axis=0)
-                        tempList = tempList[np.argsort(tempList[:,1])] #sort by opacities
-
-                        numberOfSubbins = 10
-                        subbinSize = (singleBin[1] - singleBin[0]) / numberOfSubbins
-                        print('Subbin size: ' + str(singleBin[1] - singleBin[0]))
-                        deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
-                        subbinArray = np.array([0,0,0])
-                        for line in tempList:
-                            deltaLambda = deltaLambda + line[2]
-                            temp += line[1] * line[2] #opacity_i*deltaLambda_i
-                            if (deltaLambda >= subbinSize):
-                                end += beginning + deltaLambda
-                                beginning += deltaLambda
-                                deltaLambda = 0
-                                temp /= subbinSize
-                                subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
-                                temp = 0
-                            elif (np.array_equal(line,tempList[-1])):
-                                end += beginning + deltaLambda
-                                beginning += deltaLambda
-                                deltaLambda = 0
-                                temp /= subbinSize
-                                subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
-                                subbinArray = np.delete(subbinArray, (0), axis=0)
-                                f = open(reducedFileList[counter], "a")
-                                print('Writing reduced file: ' + str(counter))
-                                np.savetxt(f, subbinArray, fmt = '%.6e')
-                                f.close()
-                                temp = 0 
-                        
-                        
-                        
-                        
+                    if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted
+                        tempList = sort_array(tempList, 1, 2) #sort by opacities
+#==============================================================================
+# Subbins
+#==============================================================================
+                        sub_bins(10, singleBin, tempList, counter, reducedFileList)
                         
                 elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
-                    tempList = np.delete(tempList, (0), axis=0)
-                    tempList = np.delete(tempList, (0), axis=0)
-                    tempList = tempList[np.argsort(tempList[:,1])] #sort by opacities
-
-                    numberOfSubbins = 10
-                    subbinSize = (singleBin[1] - singleBin[0]) / numberOfSubbins
-                    print('Subbin size: ' + str(singleBin[1] - singleBin[0]))
-                    deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
-                    subbinArray = np.array([0,0,0])
-                    for line in tempList:
-                        deltaLambda = deltaLambda + line[2]
-                        temp += line[1] * line[2] #opacity_i*deltaLambda_i
-                        if (deltaLambda >= subbinSize):
-                            end += beginning + deltaLambda
-                            beginning += deltaLambda
-                            deltaLambda = 0
-                            temp /= subbinSize
-                            subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
-                            temp = 0
-                        elif (np.array_equal(line,tempList[-1])):
-                            end += beginning + deltaLambda
-                            beginning += deltaLambda
-                            deltaLambda = 0
-                            temp /= subbinSize
-                            subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
-                            subbinArray = np.delete(subbinArray, (0), axis=0)
-                            f = open(reducedFileList[counter], "a")
-                            np.savetxt(f, subbinArray, fmt = '%.6e')
-                            f.close()
-                            temp = 0
-                                        
-                    #tenValuesList = np.array([])
-                    #for i in range(0, tempList, stepSize):
-                    #tenValuesList = np.append(tenValuesList, tempList[i])
-                    #with open(reducedFileList[counter], 'a') as f:
-                    ##f = open(reducedFileList[counter], "a")
-                    ##np.savetxt(f, tempList, fmt = '%.6e')
-                    ##f.write('\n')
-                    ##f.close()
-                    break
-        #print(tempList)
+                    tempList = sort_array(tempList, 1, 2)#sort by opacities                    
+                    sub_bins(10, singleBin, tempList, counter, reducedFileList)
+                    break #once we leave the part of the file containing current bin, break and go to the next segment file
         counter = counter + 1
   #iterate over the segment files and extract only the data coresponding to the bins
+  
+def sub_bins(numberOfSubbins, singleBin, tempList, counter, reducedFileList):
+    subBinSize = (float(singleBin[1]) - float(singleBin[0])) / numberOfSubbins
+#    print('Subbin size: ' + str(subBinSize))
+    deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
+    subbinArray = np.array([1,1,1])
+    for line in tempList: #templist contains one bin
+#        print(line[2])
+        deltaLambda += line[2]
+        temp += line[1] * line[2] #opacity_i*deltaLambda_i
+#        print(deltaLambda)
+        if (deltaLambda >= subBinSize):
+            end = beginning + deltaLambda
+            temp /= deltaLambda
+            deltaLambda = 0
+            subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
+            beginning = end
+            end, temp = 0, 0
+        elif (np.array_equal(line,tempList[-1])):
+            end = beginning + deltaLambda
+            temp /= deltaLambda
+            deltaLambda = 0
+            subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
+            subbinArray = np.delete(subbinArray, (0), axis=0)
+            f = open(reducedFileList[counter], "a")
+            np.savetxt(f, subbinArray, fmt = '%.6e')
+            f.close()        
+  
+def sort_array(array, column, removeHeader):
+    if removeHeader > 0:
+        for i in range(0, removeHeader):
+            array = np.delete(array, (0), axis=0)
+    array = array[np.argsort(array[:,column])]
+    return array
   
 def write_array(array, fileName, removeHeader = 0, resetTo = 0):
     if removeHeader > 0:
@@ -177,12 +141,7 @@ def merge_files(filename):
             if int(array[1]) > 1: #check whether we are in the header line
                 currentFile = str(int(array[1])-1) + '.segment'
                 tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
-#                tempList = np.delete(tempList, (0), axis=0)
-#                tempList = np.delete(tempList, (0), axis=0)
-#                f = open(currentFile, "a")
-#                np.savetxt(f, tempList, fmt = '%.6e')
-#                f.close()
-#                tempList = np.array([[0,0],[0,0]])
+
                 if array[1] == depthList[-1]: #special case if we are in the last segment
                     lastSegment = True
                     currentFile = str(int(array[1])) + '.segment'
@@ -191,12 +150,6 @@ def merge_files(filename):
                 tempList = np.append(tempList, [array], 0) #if we are not in the header, append current line
                 if (lastSegment == True) and (np.array_equal(array, arrays[-1])): #if we are in the last segment AND in the last line, write to file
                      tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])                    
-#                    tempList = np.delete(tempList, (0), axis=0)
-#                    tempList = np.delete(tempList, (0), axis=0)
-#                    f = open(currentFile, "a")
-#                    np.savetxt(f, tempList, fmt = '%.6e')
-#                    f.close()
-#                    tempList = np.array([[0,0],[0,0]])
         
         
     segmentFileList = [str(item) + '.segment' for item in depthList]
