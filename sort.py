@@ -53,11 +53,46 @@ def bining(depthList):
             for line in data:
                 outsideOfTheBin = True
                 if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]):
-                    ##tempList = np.append(tempList, [line], 0)
                     tempList = np.vstack([tempList, line])
-                    #f.write(str(line[0]) + '   ' + str(line[1]) + '\n')
                     outsideOfTheBin = False
                     encounteredBinYet = True
+                    if (np.array_equal(line, data[-1])):
+                        tempList = np.delete(tempList, (0), axis=0)
+                        tempList = np.delete(tempList, (0), axis=0)
+                        tempList = tempList[np.argsort(tempList[:,1])] #sort by opacities
+
+                        numberOfSubbins = 10
+                        subbinSize = (singleBin[1] - singleBin[0]) / numberOfSubbins
+                        print('Subbin size: ' + str(singleBin[1] - singleBin[0]))
+                        deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
+                        subbinArray = np.array([0,0,0])
+                        for line in tempList:
+                            deltaLambda = deltaLambda + line[2]
+                            temp += line[1] * line[2] #opacity_i*deltaLambda_i
+                            if (deltaLambda >= subbinSize):
+                                end += beginning + deltaLambda
+                                beginning += deltaLambda
+                                deltaLambda = 0
+                                temp /= subbinSize
+                                subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
+                                temp = 0
+                            elif (np.array_equal(line,tempList[-1])):
+                                end += beginning + deltaLambda
+                                beginning += deltaLambda
+                                deltaLambda = 0
+                                temp /= subbinSize
+                                subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
+                                subbinArray = np.delete(subbinArray, (0), axis=0)
+                                f = open(reducedFileList[counter], "a")
+                                print('Writing reduced file: ' + str(counter))
+                                np.savetxt(f, subbinArray, fmt = '%.6e')
+                                f.close()
+                                temp = 0 
+                        
+                        
+                        
+                        
+                        
                 elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
                     tempList = np.delete(tempList, (0), axis=0)
                     tempList = np.delete(tempList, (0), axis=0)
@@ -65,7 +100,7 @@ def bining(depthList):
 
                     numberOfSubbins = 10
                     subbinSize = (singleBin[1] - singleBin[0]) / numberOfSubbins
-                    print('Subbin size: ' + str(singleBin[1]-singleBin[0]))
+                    print('Subbin size: ' + str(singleBin[1] - singleBin[0]))
                     deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
                     subbinArray = np.array([0,0,0])
                     for line in tempList:
@@ -117,46 +152,38 @@ def merge_files(filename):
 
 
     for filename in file_list:
+        lastSegment = False #tells us whether we are in the last segment of the current file
         print(filename)
         print(str('%.2f'%(currentFileIndex/float(numberOfItems)*100)) + '%')
         currentFileIndex = currentFileIndex + 1.
         #progress bar
         
-        tempList = np.array([[0,0],[0,0]])##
-        arrays = [np.array(map(float, line.split())) for line in open(filename)]
+        tempList = np.array([[0,0],[0,0]]) #define the array to which we later append the data, it is already populated, otherwise we cannot append an array with a size of (2,1) to it
+        arrays = [np.array(map(float, line.split())) for line in open(filename)] #load the lopa file
         
         
-        for array in arrays:
-            if int(array[1]) > 0:
-                if int(array[1]) == 2:
+        for array in arrays: #walk over the lopa file
+            if int(array[1]) > 1: #check whether we are in the header line
+                currentFile = str(int(array[1])-1) + '.segment'
+                tempList = np.delete(tempList, (0), axis=0)
+                tempList = np.delete(tempList, (0), axis=0)
+                f = open(currentFile, "a")
+                np.savetxt(f, tempList, fmt = '%.6e')
+                f.close()
+                tempList = np.array([[0,0],[0,0]])
+                if array[1] == depthList[-1]:
+                    lastSegment = True
+                    currentFile = str(int(array[1])) + '.segment'
+                    
+            elif int(array[1]) < 1:
+                tempList = np.append(tempList, [array], 0) #if we are not in the header, append current line
+                if (lastSegment == True) and (np.array_equal(array, arrays[-1])):
                     tempList = np.delete(tempList, (0), axis=0)
                     tempList = np.delete(tempList, (0), axis=0)
-                    currentFile = str(int(array[1]-1)) + '.segment'
                     f = open(currentFile, "a")
                     np.savetxt(f, tempList, fmt = '%.6e')
                     f.close()
-                    tempList = np.array([[0,0],[0,0]])##
-                elif int(array[1]) > 1:
-                    tempList = np.delete(tempList, (0), axis=0)
-                    tempList = np.delete(tempList, (0), axis=0)
-                    f = open(currentFile, "a")
-                    np.savetxt(f, tempList, fmt = '%.6e')
-                    #np.savetxt(currentFile, tempList, fmt = '%.5e')
-                    f.close()
-                    tempList = np.array([[0,0],[0,0]])##
-                currentFile = str(int(array[1])) + '.segment'
-                ##f = open(currentFile, 'a')
-            else:
-                tempList = np.append(tempList, [array], 0)##
-                #print array
-                ##f.write(str(array[0]) + '   ' + str(array[1]) + '\n')
-        tempList = np.delete(tempList, (0), axis=0)
-        tempList = np.delete(tempList, (0), axis=0)
-        f = open(currentFile, "a")
-        np.savetxt(f, tempList, fmt = '%.6e')
-        f.close()
-        tempList = np.array([[0,0],[0,0]])##
-        np.savetxt(currentFile, tempList, fmt = '%.6e')
+                    tempList = np.array([[0,0],[0,0]])
         
         
     segmentFileList = [str(item) + '.segment' for item in depthList]
@@ -174,7 +201,7 @@ def merge_files(filename):
         sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
         np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.6e')
         
-        #sor the files and generate the deltaLambda values for each line
+        #sort the files and generate the deltaLambda values for each line
 #create a separate file for each depth point as listed in depthList
 #iterate over the .lopa files as listed in file_list and fill the .segment files
 
@@ -186,5 +213,3 @@ def merge_files(filename):
 depthList = merge_files(file_list)
 ##depthList = [4,55,67]##
 bining(depthList)
-
-
