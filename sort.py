@@ -138,7 +138,18 @@ def bining(depthList):
         counter = counter + 1
   #iterate over the segment files and extract only the data coresponding to the bins
   
-  
+def write_array(array, fileName, removeHeader = 0, resetTo = 0):
+    if removeHeader > 0:
+        for i in range(0, removeHeader):
+            array = np.delete(array, (0), axis=0)
+    f = open(fileName, "a")
+    np.savetxt(f, array, fmt = '%.6e')
+    f.close()
+    if resetTo != 0:
+        array = np.array(resetTo)
+    return array
+    
+    
   
 def merge_files(filename):
     currentFileIndex = 1.
@@ -148,7 +159,7 @@ def merge_files(filename):
     for array in arrays:
         if int(array[1]) > 0:
             depthList.append(int(array[1]))
-       #get the list of all depth points from the first .lupa file
+       #get the list of all depth points from the first .lopa file
 
 
     for filename in file_list:
@@ -165,25 +176,27 @@ def merge_files(filename):
         for array in arrays: #walk over the lopa file
             if int(array[1]) > 1: #check whether we are in the header line
                 currentFile = str(int(array[1])-1) + '.segment'
-                tempList = np.delete(tempList, (0), axis=0)
-                tempList = np.delete(tempList, (0), axis=0)
-                f = open(currentFile, "a")
-                np.savetxt(f, tempList, fmt = '%.6e')
-                f.close()
-                tempList = np.array([[0,0],[0,0]])
-                if array[1] == depthList[-1]:
+                tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
+#                tempList = np.delete(tempList, (0), axis=0)
+#                tempList = np.delete(tempList, (0), axis=0)
+#                f = open(currentFile, "a")
+#                np.savetxt(f, tempList, fmt = '%.6e')
+#                f.close()
+#                tempList = np.array([[0,0],[0,0]])
+                if array[1] == depthList[-1]: #special case if we are in the last segment
                     lastSegment = True
                     currentFile = str(int(array[1])) + '.segment'
                     
             elif int(array[1]) < 1:
                 tempList = np.append(tempList, [array], 0) #if we are not in the header, append current line
-                if (lastSegment == True) and (np.array_equal(array, arrays[-1])):
-                    tempList = np.delete(tempList, (0), axis=0)
-                    tempList = np.delete(tempList, (0), axis=0)
-                    f = open(currentFile, "a")
-                    np.savetxt(f, tempList, fmt = '%.6e')
-                    f.close()
-                    tempList = np.array([[0,0],[0,0]])
+                if (lastSegment == True) and (np.array_equal(array, arrays[-1])): #if we are in the last segment AND in the last line, write to file
+                     tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])                    
+#                    tempList = np.delete(tempList, (0), axis=0)
+#                    tempList = np.delete(tempList, (0), axis=0)
+#                    f = open(currentFile, "a")
+#                    np.savetxt(f, tempList, fmt = '%.6e')
+#                    f.close()
+#                    tempList = np.array([[0,0],[0,0]])
         
         
     segmentFileList = [str(item) + '.segment' for item in depthList]
@@ -194,7 +207,7 @@ def merge_files(filename):
         bufferPosition = 0
         deltaLambdaList = np.array([])
         for line in sortedWorkBuffer:
-            if bufferPosition <= len(sortedWorkBuffer)-2:
+            if bufferPosition <= len(sortedWorkBuffer) - 2:
                 deltaLambdaList = np.append(deltaLambdaList, (sortedWorkBuffer[bufferPosition+1][0] - line[0]))
                 bufferPosition = bufferPosition + 1
         deltaLambdaList = np.append(deltaLambdaList, 0)
