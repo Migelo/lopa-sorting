@@ -2,6 +2,7 @@ import numpy as np
 import argparse
 import glob
 import sys
+from multiprocessing import Pool
 
 parser = argparse.ArgumentParser(description='Sort the spectra.')
 parser.add_argument('folder', metavar='FOLDER', type=str,
@@ -110,6 +111,22 @@ def write_array(array, fileName, removeHeader = 0, resetTo = 0):
     if resetTo != 0:
         array = np.array(resetTo)
     return array
+
+def deltaLambda(currentFile):
+    print('Delta lambda calculations for: ' + str(currentFile))
+    workBuffer = np.loadtxt(currentFile,comments=None)
+    sortedWorkBuffer = workBuffer[np.argsort(workBuffer[:,0])] #sort by the first column (wavelenghts)
+    #sortedWorkBuffer = workBuffer        
+    bufferPosition = 0
+    deltaLambdaList = np.array([])
+    for line in sortedWorkBuffer:
+        if bufferPosition <= len(sortedWorkBuffer) - 2:
+            deltaLambdaList = np.append(deltaLambdaList, (sortedWorkBuffer[bufferPosition+1][0] - line[0]))
+            bufferPosition = bufferPosition + 1
+    deltaLambdaList = np.append(deltaLambdaList, 0)
+    sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
+    np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.6e', format='(I02)')
+    pass
   
 def merge_files(filename):
     currentFileIndex = 1.
@@ -149,20 +166,23 @@ def merge_files(filename):
         
         
     segmentFileList = [str(item) + '.segment' for item in depthList]
-    for currentFile in segmentFileList:
-        print('Delta lambda calculations for: ' + str(currentFile))
-        workBuffer = np.loadtxt(currentFile,comments=None)
-        sortedWorkBuffer = workBuffer[np.argsort(workBuffer[:,0])] #sort by the first column (wavelenghts)
-        #sortedWorkBuffer = workBuffer        
-        bufferPosition = 0
-        deltaLambdaList = np.array([])
-        for line in sortedWorkBuffer:
-            if bufferPosition <= len(sortedWorkBuffer) - 2:
-                deltaLambdaList = np.append(deltaLambdaList, (sortedWorkBuffer[bufferPosition+1][0] - line[0]))
-                bufferPosition = bufferPosition + 1
-        deltaLambdaList = np.append(deltaLambdaList, 0)
-        sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
-        np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.6e')
+    #print(__name__)
+    p = Pool(20)
+    p.map(deltaLambda, segmentFileList)
+    # for currentFile in segmentFileList:
+    #     print('Delta lambda calculations for: ' + str(currentFile))
+    #     workBuffer = np.loadtxt(currentFile,comments=None)
+    #     sortedWorkBuffer = workBuffer[np.argsort(workBuffer[:,0])] #sort by the first column (wavelenghts)
+    #     #sortedWorkBuffer = workBuffer        
+    #     bufferPosition = 0
+    #     deltaLambdaList = np.array([])
+    #     for line in sortedWorkBuffer:
+    #         if bufferPosition <= len(sortedWorkBuffer) - 2:
+    #             deltaLambdaList = np.append(deltaLambdaList, (sortedWorkBuffer[bufferPosition+1][0] - line[0]))
+    #             bufferPosition = bufferPosition + 1
+    #     deltaLambdaList = np.append(deltaLambdaList, 0)
+    #     sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
+    #     np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.6e')
         
         #sort the files and generate the deltaLambda values for each line
 #create a separate file for each depth point as listed in depthList
