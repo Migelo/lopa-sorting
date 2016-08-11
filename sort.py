@@ -17,7 +17,10 @@ args = parser.parse_args()
 #set the necessary parameters for parsing
 
 file_list = []
-file_list = glob.glob(args.folder+'/*.lopa')
+file_list = sorted(glob.glob(args.folder+'*.lopa'))
+#print(file_list)
+file_list = np.sort(file_list)
+#print(file_list)
 numberOfItems = len(file_list)
 #create a list off all the .lopa files
 
@@ -119,9 +122,10 @@ def merge_files(filename):
     currentFileIndex = 1.
     depthList = []
     
-    arrays = [np.array(map(float, line.split())) for line in open(file_list[0])]
+    #arrays = [np.array(map(float, line.split())) for line in open(file_list[0])]
+    arrays = np.loadtxt(file_list[0])
     for array in arrays:
-        if int(array[1]) > 0:
+        if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) :
             depthList.append(int(array[1]))
        #get the list of all depth points from the first .lopa file
 
@@ -153,10 +157,13 @@ def merge_files(filename):
         
         
     segmentFileList = [str(item) + '.segment' for item in depthList]
+    print(depthList)
+    print(segmentFileList)
     for currentFile in segmentFileList:
-        print('Sorting: ' + str(currentFile))
+        print('Delta lambda calculations for: ' + str(currentFile))
         workBuffer = np.loadtxt(currentFile,comments=None)
         sortedWorkBuffer = workBuffer[np.argsort(workBuffer[:,0])] #sort by the first column (wavelenghts)
+        #sortedWorkBuffer = workBuffer        
         bufferPosition = 0
         deltaLambdaList = np.array([])
         for line in sortedWorkBuffer:
