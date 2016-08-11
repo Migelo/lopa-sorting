@@ -18,9 +18,7 @@ args = parser.parse_args()
 
 file_list = []
 file_list = sorted(glob.glob(args.folder+'*.lopa'))
-#print(file_list)
 file_list = np.sort(file_list)
-#print(file_list)
 numberOfItems = len(file_list)
 #create a list off all the .lopa files
 
@@ -73,14 +71,11 @@ def bining(depthList):
   
 def sub_bins(numberOfSubbins, singleBin, tempList, counter, reducedFileList):
     subBinSize = (float(singleBin[1]) - float(singleBin[0])) / numberOfSubbins
-#    print('Subbin size: ' + str(subBinSize))
     deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
     subbinArray = np.array([1,1,1])
     for line in tempList: #templist contains one bin
-#        print(line[2])
         deltaLambda += line[2]
         temp += line[1] * line[2] #opacity_i*deltaLambda_i
-#        print(deltaLambda)
         if (deltaLambda >= subBinSize):
             end = beginning + deltaLambda
             temp /= deltaLambda
@@ -115,19 +110,16 @@ def write_array(array, fileName, removeHeader = 0, resetTo = 0):
     if resetTo != 0:
         array = np.array(resetTo)
     return array
-    
-    
   
 def merge_files(filename):
     currentFileIndex = 1.
     depthList = []
     
-    #arrays = [np.array(map(float, line.split())) for line in open(file_list[0])]
     arrays = np.loadtxt(file_list[0])
     for array in arrays:
         if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) :
             depthList.append(int(array[1]))
-       #get the list of all depth points from the first .lopa file
+    #get the list of all depth points from the first .lopa file
 
 
     for filename in file_list:
@@ -157,8 +149,6 @@ def merge_files(filename):
         
         
     segmentFileList = [str(item) + '.segment' for item in depthList]
-    print(depthList)
-    print(segmentFileList)
     for currentFile in segmentFileList:
         print('Delta lambda calculations for: ' + str(currentFile))
         workBuffer = np.loadtxt(currentFile,comments=None)
@@ -184,5 +174,4 @@ def merge_files(filename):
 
 
 depthList = merge_files(file_list)
-##depthList = [4,55,67]##
 bining(depthList)
