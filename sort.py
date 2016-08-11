@@ -117,10 +117,9 @@ def merge_files(filename):
     
     arrays = np.loadtxt(file_list[0])
     for array in arrays:
-        if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) :
+        if ((array[0] % 1) == 0) and ((array[1] % 1) == 0):
             depthList.append(int(array[1]))
     #get the list of all depth points from the first .lopa file
-
 
     for filename in file_list:
         lastSegment = False #tells us whether we are in the last segment of the current file
@@ -130,11 +129,12 @@ def merge_files(filename):
         #progress bar
         
         tempList = np.array([[0,0],[0,0]]) #define the array to which we later append the data, it is already populated, otherwise we cannot append an array with a size of (2,1) to it
-        arrays = [np.array(map(float, line.split())) for line in open(filename)] #load the lopa file
-        
+        #arrays = [np.array(map(float, line.split())) for line in open(filename)] #load the lopa file
+        arrays = np.loadtxt(filename)
         
         for array in arrays: #walk over the lopa file
-            if int(array[1]) > 1: #check whether we are in the header line
+            #if int(array[1]) > 1: #check whether we are in the header line
+            if ((array[0] % 1) == 0) and ((array[1] % 1) == 0):
                 currentFile = str(int(array[1])-1) + '.segment'
                 tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
 
