@@ -30,8 +30,8 @@ cpuNumber = 10
 #number of cores to use
 
 def bining(depthList):
-    reducedFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.reduced' for item in depthList]
-    segmentFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.segment' for item in depthList]
+#    reducedFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.reduced' for item in depthList]
+#    segmentFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.segment' for item in depthList]
     minMax = np.loadtxt(str(depthList[0]).zfill(len(str(np.max(depthList)))) + '.segment') #get minimum and maximum wawelenghts from the first .segment file
     wawelenghts = [array[0] for array in minMax]
     minimum = np.min(wawelenghts)
@@ -46,37 +46,37 @@ def bining(depthList):
         print('Maximum: ' + str(maximum) + '\n')
         sys.exit('Check your bins')
         #check if the bins are within range of wawelenghts
-    counter = 0
+#    counter = 0
     
-#    p = Pool(cpuNumber)    
-#    p.map(reducing, depthList)
+    p = Pool(cpuNumber)    
+    p.map(reducing, depthList)
     
     
     
-    for currentSegmentFile in segmentFileList: #for every segmentFile
-        print('Reducing: ' + str(currentSegmentFile))
-        data = [np.array(map(float, line.split())) for line in open(currentSegmentFile)]
-        for singleBin in binData: #for each bin
-            tempList = np.array([[0,0,0],[0,0,0]]) #list for storing the data which we then write to the file in the end
-            encounteredBinYet = False
-            for line in data: #for each line in a segmentFile
-                outsideOfTheBin = True
-                if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin, append it
-                    tempList = np.vstack([tempList, line])
-                    outsideOfTheBin = False
-                    encounteredBinYet = True
-                    if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted
-                        tempList = sort_array(tempList, 1, 2) #sort by opacities
-#==============================================================================
-# Subbins
-#==============================================================================
-                        sub_bins(10, singleBin, tempList, counter, reducedFileList)
-                        
-                elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
-                    tempList = sort_array(tempList, 1, 2)#sort by opacities                    
-                    sub_bins(10, singleBin, tempList, counter, reducedFileList)
-                    break #once we leave the part of the file containing current bin, break and go to the next segment file
-        counter = counter + 1
+#    for currentSegmentFile in segmentFileList: #for every segmentFile
+#        print('Reducing: ' + str(currentSegmentFile))
+#        data = [np.array(map(float, line.split())) for line in open(currentSegmentFile)]
+#        for singleBin in binData: #for each bin
+#            tempList = np.array([[0,0,0],[0,0,0]]) #list for storing the data which we then write to the file in the end
+#            encounteredBinYet = False
+#            for line in data: #for each line in a segmentFile
+#                outsideOfTheBin = True
+#                if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin, append it
+#                    tempList = np.vstack([tempList, line])
+#                    outsideOfTheBin = False
+#                    encounteredBinYet = True
+#                    if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted
+#                        tempList = sort_array(tempList, 1, 2) #sort by opacities
+##==============================================================================
+## Subbins
+##==============================================================================
+#                        sub_bins(10, singleBin, tempList, counter, reducedFileList)
+#                        
+#                elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
+#                    tempList = sort_array(tempList, 1, 2)#sort by opacities                    
+#                    sub_bins(10, singleBin, tempList, counter, reducedFileList)
+#                    break #once we leave the part of the file containing current bin, break and go to the next segment file
+#        counter = counter + 1
 #  iterate over the segment files and extract only the data coresponding to the bins
   
 def reducing(currentFile):
@@ -84,8 +84,8 @@ def reducing(currentFile):
     currentFile = str(currentFile).zfill(2) + '.segment'
     print('Reducing: ' + str(currentFile))
     data = np.loadtxt(currentFile)
-#    binData = np.loadtxt(args.bins)
-    binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
+    binData = np.loadtxt(args.bins)
+#    binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
     for singleBin in binData: #for each bin
         tempList = np.array([[0,0,0],[0,0,0]]) #list for storing the data which we then write to the file in the end
         encounteredBinYet = False
@@ -105,7 +105,6 @@ def reducing(currentFile):
             elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
                 tempList = sort_array(tempList, 1, 2)#sort by opacities                    
                 sub_bins(10, singleBin, tempList, counter)
-                print(line)
                 break #once we leave the part of the file containing current bin, break and go to the next segment file
     
     
@@ -166,6 +165,56 @@ def deltaLambda(currentFile):
     sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
     np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.7e')
     pass
+
+def deleteOverlapping(tempList, fileName):
+    """Deletes the overlapping parts of a .lopa file.
+
+    Each .lopa file contains parts which partially overlap with the next or the previous .lopa file, this function deletes those parts. If the file is first or last, it will only delete the last or first part respectively.
+
+    Parameters
+    ----------
+    tempList : np.array()
+        An array containing one segment of the .lopa file
+    fileName : str
+        Name of the current .lopa file.
+
+    Returns
+    -------
+    np.array()
+        Array without the overlapping parts.
+
+    """
+    tempList = np.delete(tempList, (0), axis=0)
+    tempList = np.delete(tempList, (0), axis=0)
+    if fileName == file_list[0]: specialPosition = 0
+    elif fileName == file_list[-1]: specialPosition = -1
+    else: specialPosition = 1
+    fileName = int(fileName.split('/')[-1].split('.')[0])
+    minimum = fileName - 5.
+    maximum = fileName + 5.
+    tempTempList = np.array([0,0])
+#    print('Min ' + str(minimum))
+#    print('Max ' + str(maximum))
+#    print('Filename ' + str(fileName))
+#    print('Special position ' + str(specialPosition))
+
+    if specialPosition == 1:
+        for line in tempList:
+            if (line[0] < maximum) and (line[0] > minimum):
+                tempTempList = np.vstack([tempTempList, [line]])
+    elif specialPosition == -1:
+        for line in tempList:
+            if line[0] < maximum:
+                tempTempList = np.vstack([tempTempList, [line]])        
+    elif specialPosition == 0:
+        for line in tempList:
+            if line[0] > minimum:
+                tempTempList = np.vstack([tempTempList, [line]])
+    tempList = np.delete(tempTempList, (0), axis=0)
+#    print('TempList is: ')
+#    print(tempList)
+    return tempList
+    
   
 def merge_files(filename):
     currentFileIndex = 1.
@@ -193,16 +242,19 @@ def merge_files(filename):
                     lastSegment = True
 #                    print('we are in the last segment')
                     currentFile = str(int(array[1])-1).zfill(len(str(np.max(depthList)))) + '.segment'
-                    tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
+                    tempList = deleteOverlapping(tempList, filename)
+                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
                     currentFile = str(int(array[1])).zfill(len(str(np.max(depthList)))) + '.segment'
                 elif int(array[1] != 1):
                     currentFile = str(int(array[1])-1).zfill(len(str(np.max(depthList)))) + '.segment'
-                    tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
+                    tempList = deleteOverlapping(tempList, filename)
+                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
 #                    print('Writing to: ' + currentFile)
             else:
                 tempList = np.append(tempList, [array], 0) #if we are not in the header, append current line
                 if (lastSegment == True) and (np.array_equal(array, arrays[-1])): #if we are in the last segment AND in the last line, write to file
-                    tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
+                    tempList = deleteOverlapping(tempList, filename)
+                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
 #                    print('Writing to: ' + currentFile)
         
         
