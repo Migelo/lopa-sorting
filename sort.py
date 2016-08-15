@@ -18,18 +18,21 @@ args = parser.parse_args()
 #set the necessary parameters for parsing
 
 file_list = []
-file_list = sorted(glob.glob(args.folder+'*.lopa'))
-file_list = np.sort(file_list)
+file_list = sorted(glob.glob(args.folder+'*.lopa'), reverse=True)
+#file_list = np.sort(file_list)
 numberOfItems = len(file_list)
 #create a list off all the .lopa files
 
 merged_file = args.merged_file
 #create a path to the merged file
 
+cpuNumber = 10
+#number of cores to use
+
 def bining(depthList):
-    reducedFileList = [str(item) + '.reduced' for item in depthList]
-    segmentFileList = [str(item) + '.segment' for item in depthList]
-    minMax = np.loadtxt(str(depthList[0]) + '.segment') #get minimum and maximum wawelenghts from the first .segment file
+    reducedFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.reduced' for item in depthList]
+    segmentFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.segment' for item in depthList]
+    minMax = np.loadtxt(str(depthList[0]).zfill(len(str(np.max(depthList)))) + '.segment') #get minimum and maximum wawelenghts from the first .segment file
     wawelenghts = [array[0] for array in minMax]
     minimum = np.min(wawelenghts)
     maximum = np.max(wawelenghts)
@@ -44,6 +47,12 @@ def bining(depthList):
         sys.exit('Check your bins')
         #check if the bins are within range of wawelenghts
     counter = 0
+    
+#    p = Pool(cpuNumber)    
+#    p.map(reducing, depthList)
+    
+    
+    
     for currentSegmentFile in segmentFileList: #for every segmentFile
         print('Reducing: ' + str(currentSegmentFile))
         data = [np.array(map(float, line.split())) for line in open(currentSegmentFile)]
@@ -68,9 +77,39 @@ def bining(depthList):
                     sub_bins(10, singleBin, tempList, counter, reducedFileList)
                     break #once we leave the part of the file containing current bin, break and go to the next segment file
         counter = counter + 1
-  #iterate over the segment files and extract only the data coresponding to the bins
+#  iterate over the segment files and extract only the data coresponding to the bins
   
-def sub_bins(numberOfSubbins, singleBin, tempList, counter, reducedFileList):
+def reducing(currentFile):
+    counter = currentFile
+    currentFile = str(currentFile).zfill(2) + '.segment'
+    print('Reducing: ' + str(currentFile))
+    data = np.loadtxt(currentFile)
+#    binData = np.loadtxt(args.bins)
+    binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
+    for singleBin in binData: #for each bin
+        tempList = np.array([[0,0,0],[0,0,0]]) #list for storing the data which we then write to the file in the end
+        encounteredBinYet = False
+        for line in data: #for each line in a segmentFile
+            outsideOfTheBin = True
+            if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin, append it
+                tempList = np.vstack([tempList, line])
+                outsideOfTheBin = False
+                encounteredBinYet = True
+                if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted
+                    tempList = sort_array(tempList, 1, 2) #sort by opacities
+#==============================================================================
+# Subbins
+#==============================================================================
+                    sub_bins(10, singleBin, tempList, counter)
+                    
+            elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
+                tempList = sort_array(tempList, 1, 2)#sort by opacities                    
+                sub_bins(10, singleBin, tempList, counter)
+                print(line)
+                break #once we leave the part of the file containing current bin, break and go to the next segment file
+    
+    
+def sub_bins(numberOfSubbins, singleBin, tempList, counter):
     subBinSize = (float(singleBin[1]) - float(singleBin[0])) / numberOfSubbins
     deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
     subbinArray = np.array([1,1,1])
@@ -90,8 +129,8 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter, reducedFileList):
             deltaLambda = 0
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             subbinArray = np.delete(subbinArray, (0), axis=0)
-            f = open(reducedFileList[counter], "a")
-            np.savetxt(f, subbinArray, fmt = '%.6e')
+            f = open(str(counter) + '.reduced', "a")
+            np.savetxt(f, subbinArray, fmt = '%.7e')
             f.close()        
   
 def sort_array(array, column, removeHeader):
@@ -106,7 +145,7 @@ def write_array(array, fileName, removeHeader = 0, resetTo = 0):
         for i in range(0, removeHeader):
             array = np.delete(array, (0), axis=0)
     f = open(fileName, "a")
-    np.savetxt(f, array, fmt = '%.6e')
+    np.savetxt(f, array, fmt = '%.7e')
     f.close()
     if resetTo != 0:
         array = np.array(resetTo)
@@ -115,17 +154,17 @@ def write_array(array, fileName, removeHeader = 0, resetTo = 0):
 def deltaLambda(currentFile):
     print('Delta lambda calculations for: ' + str(currentFile))
     workBuffer = np.loadtxt(currentFile,comments=None)
-    sortedWorkBuffer = workBuffer[np.argsort(workBuffer[:,0])] #sort by the first column (wavelenghts)
-    #sortedWorkBuffer = workBuffer        
+    #sortedWorkBuffer = workBuffer[np.argsort(workBuffer[:,0])] #sort by the first column (wavelenghts)
+    sortedWorkBuffer = workBuffer        
     bufferPosition = 0
     deltaLambdaList = np.array([])
     for line in sortedWorkBuffer:
         if bufferPosition <= len(sortedWorkBuffer) - 2:
-            deltaLambdaList = np.append(deltaLambdaList, (sortedWorkBuffer[bufferPosition+1][0] - line[0]))
+            deltaLambdaList = np.append(deltaLambdaList, (abs(sortedWorkBuffer[bufferPosition+1][0] - line[0])))
             bufferPosition = bufferPosition + 1
     deltaLambdaList = np.append(deltaLambdaList, 0)
     sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
-    np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.6e', format='(I02)')
+    np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.7e')
     pass
   
 def merge_files(filename):
@@ -134,7 +173,7 @@ def merge_files(filename):
     
     arrays = np.loadtxt(file_list[0])
     for array in arrays:
-        if ((array[0] % 1) == 0) and ((array[1] % 1) == 0):
+        if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0):
             depthList.append(int(array[1]))
     #get the list of all depth points from the first .lopa file
 
@@ -146,45 +185,31 @@ def merge_files(filename):
         #progress bar
         
         tempList = np.array([[0,0],[0,0]]) #define the array to which we later append the data, it is already populated, otherwise we cannot append an array with a size of (2,1) to it
-        #arrays = [np.array(map(float, line.split())) for line in open(filename)] #load the lopa file
-        arrays = np.loadtxt(filename)
-        
-        for array in arrays: #walk over the lopa file
-            #if int(array[1]) > 1: #check whether we are in the header line
-            if ((array[0] % 1) == 0) and ((array[1] % 1) == 0):
-                currentFile = str(int(array[1])-1) + '.segment'
-                tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
+        arrays = np.loadtxt(filename) #load the lopa file
 
-                if array[1] == depthList[-1]: #special case if we are in the last segment
+        for array in arrays: #walk over the lopa file
+            if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0): #check whether we are in the header line
+                if array[1] == depthList[-1]: #special case if we are in the last segment of the lopa file
                     lastSegment = True
-                    currentFile = str(int(array[1])) + '.segment'
-                    
-            elif int(array[1]) < 1:
+#                    print('we are in the last segment')
+                    currentFile = str(int(array[1])-1).zfill(len(str(np.max(depthList)))) + '.segment'
+                    tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
+                    currentFile = str(int(array[1])).zfill(len(str(np.max(depthList)))) + '.segment'
+                elif int(array[1] != 1):
+                    currentFile = str(int(array[1])-1).zfill(len(str(np.max(depthList)))) + '.segment'
+                    tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
+#                    print('Writing to: ' + currentFile)
+            else:
                 tempList = np.append(tempList, [array], 0) #if we are not in the header, append current line
                 if (lastSegment == True) and (np.array_equal(array, arrays[-1])): #if we are in the last segment AND in the last line, write to file
-                     tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])                    
+                    tempList = write_array(tempList, currentFile, 2, [[0,0],[0,0]])
+#                    print('Writing to: ' + currentFile)
         
         
-    segmentFileList = [str(item) + '.segment' for item in depthList]
-    #print(__name__)
-    p = Pool(20)
+    segmentFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.segment' for item in depthList]
+    p = Pool(cpuNumber)
     p.map(deltaLambda, segmentFileList)
-    # for currentFile in segmentFileList:
-    #     print('Delta lambda calculations for: ' + str(currentFile))
-    #     workBuffer = np.loadtxt(currentFile,comments=None)
-    #     sortedWorkBuffer = workBuffer[np.argsort(workBuffer[:,0])] #sort by the first column (wavelenghts)
-    #     #sortedWorkBuffer = workBuffer        
-    #     bufferPosition = 0
-    #     deltaLambdaList = np.array([])
-    #     for line in sortedWorkBuffer:
-    #         if bufferPosition <= len(sortedWorkBuffer) - 2:
-    #             deltaLambdaList = np.append(deltaLambdaList, (sortedWorkBuffer[bufferPosition+1][0] - line[0]))
-    #             bufferPosition = bufferPosition + 1
-    #     deltaLambdaList = np.append(deltaLambdaList, 0)
-    #     sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
-    #     np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.6e')
-        
-        #sort the files and generate the deltaLambda values for each line
+    #sort the files and generate the deltaLambda values for each line
 #create a separate file for each depth point as listed in depthList
 #iterate over the .lopa files as listed in file_list and fill the .segment files
 
@@ -194,4 +219,7 @@ def merge_files(filename):
 
 
 depthList = merge_files(file_list)
+
+#p = Pool(cpuNumber)
+#p.map(bining,depthList)
 bining(depthList)
