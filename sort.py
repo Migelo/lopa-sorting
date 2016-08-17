@@ -92,7 +92,12 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter):
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             beginning = end
             end, temp = 0, 0
-        if (np.array_equal(line,tempList[-1])):
+            if (np.array_equal(line,tempList[-1])):
+                subbinArray = np.delete(subbinArray, (0), axis=0)
+                f = open(str(counter) + '.reduced', "a")
+                np.savetxt(f, subbinArray, fmt = '%.7e')
+                f.close()
+        elif (np.array_equal(line,tempList[-1])):
             end = beginning + deltaLambda
             temp /= deltaLambda
             deltaLambda = 0
