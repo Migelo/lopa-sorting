@@ -18,7 +18,7 @@ args = parser.parse_args()
 #set the necessary parameters for parsing
 
 file_list = []
-file_list = sorted(glob.glob(args.folder+'*.lopa'), reverse=True)
+file_list = sorted(glob.glob(args.folder+'/*.lopa'), reverse=True)
 #file_list = np.sort(file_list)
 numberOfItems = len(file_list)
 #create a list off all the .lopa files
@@ -26,7 +26,7 @@ numberOfItems = len(file_list)
 merged_file = args.merged_file
 #create a path to the merged file
 
-cpuNumber = 10
+cpuNumber = 42
 #number of cores to use
 
 def bining(depthList):
@@ -39,53 +39,26 @@ def bining(depthList):
     print('Minimum: ' + str(minimum))
     print('Maximum: ' + str(maximum))
 
-    binData = np.loadtxt(args.bins)
+#    binData = np.loadtxt(args.bins)
+    binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
     if (np.min(binData) < minimum) or (np.max(binData) > maximum):
         print('Bins intervals exceede the available wawelenghts. Please check your bins and make sure they are within the following limits')
         print('Minimum: ' + str(minimum) + '\n')
         print('Maximum: ' + str(maximum) + '\n')
         sys.exit('Check your bins')
         #check if the bins are within range of wawelenghts
-#    counter = 0
     
     p = Pool(cpuNumber)    
     p.map(reducing, depthList)
     
-    
-    
-#    for currentSegmentFile in segmentFileList: #for every segmentFile
-#        print('Reducing: ' + str(currentSegmentFile))
-#        data = [np.array(map(float, line.split())) for line in open(currentSegmentFile)]
-#        for singleBin in binData: #for each bin
-#            tempList = np.array([[0,0,0],[0,0,0]]) #list for storing the data which we then write to the file in the end
-#            encounteredBinYet = False
-#            for line in data: #for each line in a segmentFile
-#                outsideOfTheBin = True
-#                if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin, append it
-#                    tempList = np.vstack([tempList, line])
-#                    outsideOfTheBin = False
-#                    encounteredBinYet = True
-#                    if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted
-#                        tempList = sort_array(tempList, 1, 2) #sort by opacities
-##==============================================================================
-## Subbins
-##==============================================================================
-#                        sub_bins(10, singleBin, tempList, counter, reducedFileList)
-#                        
-#                elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
-#                    tempList = sort_array(tempList, 1, 2)#sort by opacities                    
-#                    sub_bins(10, singleBin, tempList, counter, reducedFileList)
-#                    break #once we leave the part of the file containing current bin, break and go to the next segment file
-#        counter = counter + 1
-#  iterate over the segment files and extract only the data coresponding to the bins
   
 def reducing(currentFile):
     counter = currentFile
     currentFile = str(currentFile).zfill(2) + '.segment'
     print('Reducing: ' + str(currentFile))
-    data = np.loadtxt(currentFile)
-    binData = np.loadtxt(args.bins)
-#    binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
+    data = np.loadtxt(currentFile) #load the current file to memory
+#    binData = np.loadtxt(args.bins)
+    binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
     for singleBin in binData: #for each bin
         tempList = np.array([[0,0,0],[0,0,0]]) #list for storing the data which we then write to the file in the end
         encounteredBinYet = False
@@ -95,16 +68,13 @@ def reducing(currentFile):
                 tempList = np.vstack([tempList, line])
                 outsideOfTheBin = False
                 encounteredBinYet = True
-                if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted
+                if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted                   
                     tempList = sort_array(tempList, 1, 2) #sort by opacities
-#==============================================================================
-# Subbins
-#==============================================================================
-                    sub_bins(10, singleBin, tempList, counter)
+                    sub_bins(1, singleBin, tempList, counter)
                     
-            elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
-                tempList = sort_array(tempList, 1, 2)#sort by opacities                    
-                sub_bins(10, singleBin, tempList, counter)
+            elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):                    
+                tempList = sort_array(tempList, 1, 2)#sort by opacities
+                sub_bins(1, singleBin, tempList, counter)
                 break #once we leave the part of the file containing current bin, break and go to the next segment file
     
     
@@ -122,7 +92,7 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter):
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             beginning = end
             end, temp = 0, 0
-        elif (np.array_equal(line,tempList[-1])):
+        if (np.array_equal(line,tempList[-1])):
             end = beginning + deltaLambda
             temp /= deltaLambda
             deltaLambda = 0
@@ -130,7 +100,8 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter):
             subbinArray = np.delete(subbinArray, (0), axis=0)
             f = open(str(counter) + '.reduced', "a")
             np.savetxt(f, subbinArray, fmt = '%.7e')
-            f.close()        
+            f.close()
+            print('Pisemo!')
   
 def sort_array(array, column, removeHeader):
     if removeHeader > 0:
