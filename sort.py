@@ -30,17 +30,13 @@ cpuNumber = 42
 #number of cores to use
 
 def bining(depthList):
-#    reducedFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.reduced' for item in depthList]
-#    segmentFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.segment' for item in depthList]
     minMax = np.loadtxt(str(depthList[0]).zfill(len(str(np.max(depthList)))) + '.segment') #get minimum and maximum wawelenghts from the first .segment file
     wawelenghts = [array[0] for array in minMax]
     minimum = np.min(wawelenghts)
     maximum = np.max(wawelenghts)
     print('Minimum: ' + str(minimum))
     print('Maximum: ' + str(maximum))
-
-#    binData = np.loadtxt(args.bins)
-    binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
+    binData = np.loadtxt(args.bins)
     if (np.min(binData) < minimum) or (np.max(binData) > maximum):
         print('Bins intervals exceede the available wawelenghts. Please check your bins and make sure they are within the following limits')
         print('Minimum: ' + str(minimum) + '\n')
@@ -57,8 +53,7 @@ def reducing(currentFile):
     currentFile = str(currentFile).zfill(2) + '.segment'
     print('Reducing: ' + str(currentFile))
     data = np.loadtxt(currentFile) #load the current file to memory
-#    binData = np.loadtxt(args.bins)
-    binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
+    binData = np.loadtxt(args.bins)
     for singleBin in binData: #for each bin
         tempList = np.array([[0,0,0],[0,0,0]]) #list for storing the data which we then write to the file in the end
         encounteredBinYet = False
@@ -106,7 +101,6 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter):
             f = open(str(counter) + '.reduced', "a")
             np.savetxt(f, subbinArray, fmt = '%.7e')
             f.close()
-            print('Pisemo!')
   
 def sort_array(array, column, removeHeader):
     if removeHeader > 0:
@@ -169,10 +163,6 @@ def deleteOverlapping(tempList, fileName):
     minimum = fileName - 5.
     maximum = fileName + 5.
     tempTempList = np.array([0,0])
-#    print('Min ' + str(minimum))
-#    print('Max ' + str(maximum))
-#    print('Filename ' + str(fileName))
-#    print('Special position ' + str(specialPosition))
 
     if specialPosition == 1:
         for line in tempList:
@@ -187,8 +177,6 @@ def deleteOverlapping(tempList, fileName):
             if line[0] > minimum:
                 tempTempList = np.vstack([tempTempList, [line]])
     tempList = np.delete(tempTempList, (0), axis=0)
-#    print('TempList is: ')
-#    print(tempList)
     return tempList
     
   
@@ -248,6 +236,5 @@ def merge_files(filename):
 
 depthList = merge_files(file_list)
 
-#p = Pool(cpuNumber)
-#p.map(bining,depthList)
+
 bining(depthList)
