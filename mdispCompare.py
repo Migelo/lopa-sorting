@@ -1,5 +1,4 @@
 import numpy as np
-import glob
 import sys
 import argparse
 
@@ -12,23 +11,8 @@ parser.add_argument('o','outputFile', type=str, help='Set the output file.')
 args = parser.parse_args()
 #set the necessary parameters for parsing
 
-
-file_list = []
-file_list = sorted(glob.glob(args.bins + '/*.mdisp'))
-#file_list = np.sort(file_list)
-
-#merged_file = args.merged_file
-#create a path to the merged file
-
 cpuNumber = 2
 #number of cores to use
-
-a = np.array([0,0])
-for filee in file_list:
-    a = np.vstack([a,np.loadtxt(filee)])
-    a = np.delete(a, (0), axis=0)
-    np.savetxt('spectra100bin', a, fmt = '%.7e')
-
 
 binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
 data = np.loadtxt('medianSpectra')
