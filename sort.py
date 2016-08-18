@@ -7,12 +7,13 @@ from multiprocessing import Pool
 parser = argparse.ArgumentParser(description='Sort the spectra.')
 parser.add_argument('folder', metavar='FOLDER', type=str,
                   help='FOLDER with .lopa files to be processed')
-parser.add_argument('--bins', metavar='bins', type=str,
-                   help='file defining the wawelenghts bins')
-parser.add_argument('--merged_file', type=str, default="merged.lopa",
-                   help='set the location of the merged file, by default it will be stored in the current directory under the name "merged.lopa"')
-#parser.add_argument('-n','--sub-bin-number', metavar='subbins', action='store_const',
-#                  help='set the number of subbin each bin will be split during calculations')
+parser.add_argument('bins', type=str,
+                   help='File defining the wawelenght bins')
+parser.add_argument('merged_file', type=str, default="merged.lopa",
+                   help='Location of the merged file, by default it will be stored in the current directory under the name "merged.lopa"')
+parser.add_argument('-n','--sub-bin-number', metavar='subbins', action='store_const',
+                  help='Number of subbin each bin will be split during calculations')
+parser.add_argument('cpuNumber', type=int, help='Number of CPUs to be used.')
 
 args = parser.parse_args()
 #set the necessary parameters for parsing
@@ -26,11 +27,67 @@ numberOfItems = len(file_list)
 merged_file = args.merged_file
 #create a path to the merged file
 
-cpuNumber = 42
+cpuNumber = args.cpuNumber
 #number of cores to use
 
+floatFormat = '%.7e'
+#format for np.savetxt()
+
+def merge_files(filename):
+    currentFileIndex = 1.
+    depthList = []    
+    arrays = np.loadtxt(file_list[0])
+    for array in arrays:
+        if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0):
+            depthList.append(int(array[1]))
+    global depthLength
+    depthLength = len(str(np.max(depthList)))
+    #get the list of all depth points from the first .lopa file
+    #depthLength is created as a global variable so all functions 
+
+    for filename in file_list:
+        lastSegment = False #tells us whether we are in the last segment of the current file
+        print(filename)
+        print(str('%.2f'%(currentFileIndex/float(numberOfItems)*100)) + '%')
+        currentFileIndex = currentFileIndex + 1.
+        #progress bar
+        
+        tempList = np.array([[0,0],[0,0]]) #define the array to which we later append the data, it is already populated, otherwise we cannot append an array with a size of (2,1) to it
+        arrays = np.loadtxt(filename) #load the lopa file
+
+        for array in arrays: #walk over the lopa file
+            if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0): #check whether we are in the header line
+                if array[1] == depthList[-1]: #special case if we are in the last segment of the lopa file
+                    lastSegment = True
+                    currentFile = str(int(array[1])-1).zfill(depthLength) + '.segment'
+                    tempList = deleteOverlapping(tempList, filename)
+                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
+                    currentFile = str(int(array[1])).zfill(depthLength) + '.segment'
+                elif int(array[1] != 1):
+                    currentFile = str(int(array[1])-1).zfill(depthLength) + '.segment'
+                    tempList = deleteOverlapping(tempList, filename)
+                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
+            else:
+                tempList = np.append(tempList, [array], 0) #if we are not in the header, append current line
+                if (lastSegment == True) and (np.array_equal(array, arrays[-1])): #if we are in the last segment AND in the last line, write to file
+                    tempList = deleteOverlapping(tempList, filename)
+                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])        
+        
+    segmentFileList = [str(item).zfill(depthLength) + '.segment' for item in depthList]
+    p = Pool(cpuNumber)
+    p.map(deltaLambda, segmentFileList)
+    #sort the files and generate the deltaLambda values for each line
+#create a separate file for each depth point as listed in depthList
+#iterate over the .lopa files as listed in file_list and fill the .segment files
+
+    
+    print('segmentFileList length: ' + str(len(segmentFileList)))
+    return depthList
+
+
+
 def bining(depthList):
-    minMax = np.loadtxt(str(depthList[0]).zfill(len(str(np.max(depthList)))) + '.segment') #get minimum and maximum wawelenghts from the first .segment file
+    minMax = np.loadtxt(str(depthList[0]).zfill(depthLength) + '.segment') #get minimum and maximum wawelenghts from the first .segment file
     wawelenghts = [array[0] for array in minMax]
     minimum = np.min(wawelenghts)
     maximum = np.max(wawelenghts)
@@ -50,7 +107,7 @@ def bining(depthList):
   
 def reducing(currentFile):
     counter = currentFile
-    currentFile = str(currentFile).zfill(2) + '.segment'
+    currentFile = str(currentFile).zfill(depthLength) + '.segment'
     print('Reducing: ' + str(currentFile))
     data = np.loadtxt(currentFile) #load the current file to memory
     binData = np.loadtxt(args.bins)
@@ -90,7 +147,7 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter):
             if (np.array_equal(line,tempList[-1])):
                 subbinArray = np.delete(subbinArray, (0), axis=0)
                 f = open(str(counter) + '.reduced', "a")
-                np.savetxt(f, subbinArray, fmt = '%.7e')
+                np.savetxt(f, subbinArray, fmt = floatFormat)
                 f.close()
         elif (np.array_equal(line,tempList[-1])):
             end = beginning + deltaLambda
@@ -99,7 +156,7 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter):
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             subbinArray = np.delete(subbinArray, (0), axis=0)
             f = open(str(counter) + '.reduced', "a")
-            np.savetxt(f, subbinArray, fmt = '%.7e')
+            np.savetxt(f, subbinArray, fmt = floatFormat)
             f.close()
   
 def sort_array(array, column, removeHeader):
@@ -114,7 +171,7 @@ def write_array(array, fileName, removeHeader = 0, resetTo = 0):
         for i in range(0, removeHeader):
             array = np.delete(array, (0), axis=0)
     f = open(fileName, "a")
-    np.savetxt(f, array, fmt = '%.7e')
+    np.savetxt(f, array, fmt = floatFormat)
     f.close()
     if resetTo != 0:
         array = np.array(resetTo)
@@ -133,7 +190,7 @@ def deltaLambda(currentFile):
             bufferPosition = bufferPosition + 1
     deltaLambdaList = np.append(deltaLambdaList, 0)
     sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
-    np.savetxt(currentFile,sortedWorkBuffer, fmt = '%.7e')
+    np.savetxt(currentFile,sortedWorkBuffer, fmt = floatFormat)
     pass
 
 def deleteOverlapping(tempList, fileName):
@@ -180,59 +237,6 @@ def deleteOverlapping(tempList, fileName):
     return tempList
     
   
-def merge_files(filename):
-    currentFileIndex = 1.
-    depthList = []
-    
-    arrays = np.loadtxt(file_list[0])
-    for array in arrays:
-        if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0):
-            depthList.append(int(array[1]))
-    #get the list of all depth points from the first .lopa file
-
-    for filename in file_list:
-        lastSegment = False #tells us whether we are in the last segment of the current file
-        print(filename)
-        print(str('%.2f'%(currentFileIndex/float(numberOfItems)*100)) + '%')
-        currentFileIndex = currentFileIndex + 1.
-        #progress bar
-        
-        tempList = np.array([[0,0],[0,0]]) #define the array to which we later append the data, it is already populated, otherwise we cannot append an array with a size of (2,1) to it
-        arrays = np.loadtxt(filename) #load the lopa file
-
-        for array in arrays: #walk over the lopa file
-            if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0): #check whether we are in the header line
-                if array[1] == depthList[-1]: #special case if we are in the last segment of the lopa file
-                    lastSegment = True
-#                    print('we are in the last segment')
-                    currentFile = str(int(array[1])-1).zfill(len(str(np.max(depthList)))) + '.segment'
-                    tempList = deleteOverlapping(tempList, filename)
-                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
-                    currentFile = str(int(array[1])).zfill(len(str(np.max(depthList)))) + '.segment'
-                elif int(array[1] != 1):
-                    currentFile = str(int(array[1])-1).zfill(len(str(np.max(depthList)))) + '.segment'
-                    tempList = deleteOverlapping(tempList, filename)
-                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
-#                    print('Writing to: ' + currentFile)
-            else:
-                tempList = np.append(tempList, [array], 0) #if we are not in the header, append current line
-                if (lastSegment == True) and (np.array_equal(array, arrays[-1])): #if we are in the last segment AND in the last line, write to file
-                    tempList = deleteOverlapping(tempList, filename)
-                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
-#                    print('Writing to: ' + currentFile)
-        
-        
-    segmentFileList = [str(item).zfill(len(str(np.max(depthList)))) + '.segment' for item in depthList]
-    p = Pool(cpuNumber)
-    p.map(deltaLambda, segmentFileList)
-    #sort the files and generate the deltaLambda values for each line
-#create a separate file for each depth point as listed in depthList
-#iterate over the .lopa files as listed in file_list and fill the .segment files
-
-    
-    print('segmentFileList length: ' + str(len(segmentFileList)))
-    return depthList
-
 
 depthList = merge_files(file_list)
 
