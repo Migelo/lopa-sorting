@@ -9,10 +9,7 @@ parser.add_argument('folder', metavar='FOLDER', type=str,
                   help='FOLDER with .lopa files to be processed')
 parser.add_argument('bins', type=str,
                    help='File defining the wawelenght bins')
-parser.add_argument('merged_file', type=str, default="merged.lopa",
-                   help='Location of the merged file, by default it will be stored in the current directory under the name "merged.lopa"')
-parser.add_argument('-n','--sub-bin-number', metavar='subbins', action='store_const',
-                  help='Number of subbin each bin will be split during calculations')
+parser.add_argument('subBins', help='File defining the subBins distribution.')
 parser.add_argument('cpuNumber', type=int, help='Number of CPUs to be used.')
 
 args = parser.parse_args()
@@ -43,7 +40,7 @@ def merge_files(filename):
     global depthLength
     depthLength = len(str(np.max(depthList)))
     #get the list of all depth points from the first .lopa file
-    #depthLength is created as a global variable so all functions 
+    #depthLength is created as a global variable so all functions can access it
 
     for filename in file_list:
         lastSegment = False #tells us whether we are in the last segment of the current file
@@ -80,7 +77,6 @@ def merge_files(filename):
 #create a separate file for each depth point as listed in depthList
 #iterate over the .lopa files as listed in file_list and fill the .segment files
 
-    
     print('segmentFileList length: ' + str(len(segmentFileList)))
     return depthList
 
@@ -122,22 +118,30 @@ def reducing(currentFile):
                 encounteredBinYet = True
                 if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted                   
                     tempList = sort_array(tempList, 1, 2) #sort by opacities
-                    sub_bins(1, singleBin, tempList, counter)
+                    sub_bins(args.subBins, singleBin, tempList, counter)
                     
             elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):                    
                 tempList = sort_array(tempList, 1, 2)#sort by opacities
-                sub_bins(1, singleBin, tempList, counter)
+                sub_bins(args.subBins, singleBin, tempList, counter)
                 break #once we leave the part of the file containing current bin, break and go to the next segment file
     
     
-def sub_bins(numberOfSubbins, singleBin, tempList, counter):
-    subBinSize = (float(singleBin[1]) - float(singleBin[0])) / numberOfSubbins
+def sub_bins(subBinFile, singleBin, tempList, counter):
+    subBins = np.loadtxt(subBinFile, unpack=True, ndmin = 1)
+    subBins = np.vstack([[0,0], subBins])
+    subBinsLength = np.array([0.])
+    for line in subBins: subBinsLength = np.append(subBinsLength, (singleBin[1]-singleBin[0]) * (line[1] - line[0]))
+    subBinsLength = np.delete(subBinsLength, (0), axis=0)
+    subBins = np.delete(subBins, (0), axis=0)
     deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
     subbinArray = np.array([1,1,1])
+    i = 0
     for line in tempList: #templist contains one bin
+        subBinSize = subBinsLength[i]
         deltaLambda += line[2]
         temp += line[1] * line[2] #opacity_i*deltaLambda_i
         if (deltaLambda >= subBinSize):
+            i += 1
             end = beginning + deltaLambda
             temp /= deltaLambda
             deltaLambda = 0
@@ -146,7 +150,7 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter):
             end, temp = 0, 0
             if (np.array_equal(line,tempList[-1])):
                 subbinArray = np.delete(subbinArray, (0), axis=0)
-                f = open(str(counter) + '.reduced', "a")
+                f = open(str(counter).zfill(depthLength) + '.reduced', "a")
                 np.savetxt(f, subbinArray, fmt = floatFormat)
                 f.close()
         elif (np.array_equal(line,tempList[-1])):
@@ -155,10 +159,10 @@ def sub_bins(numberOfSubbins, singleBin, tempList, counter):
             deltaLambda = 0
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             subbinArray = np.delete(subbinArray, (0), axis=0)
-            f = open(str(counter) + '.reduced', "a")
+            f = open(str(counter).zfill(depthLength) + '.reduced', "a")
             np.savetxt(f, subbinArray, fmt = floatFormat)
             f.close()
-  
+
 def sort_array(array, column, removeHeader):
     if removeHeader > 0:
         for i in range(0, removeHeader):
@@ -236,9 +240,5 @@ def deleteOverlapping(tempList, fileName):
     tempList = np.delete(tempTempList, (0), axis=0)
     return tempList
     
-  
-
 depthList = merge_files(file_list)
-
-
 bining(depthList)
