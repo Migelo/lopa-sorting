@@ -1,17 +1,28 @@
 import numpy as np
 import glob
+import sys
+import argparse
+
+
+parser = argparse.ArgumentParser(description='Compare 2 spectra files.')
+parser.add_argument('spectra1', metavar='SPECTRA', help='First spectra, the one that will be devided.', type=str)
+parser.add_argument('spectra2', help='Second spectra, the one we will devide BY.', type=str)
+parser.add_argument('bins', help='Bins on which the comparison should be made, should be the same file as the used in reducing the binned spectra.', type=str)
+parser.add_argument('o','outputFile', type=str, help='Set the output file.')
+args = parser.parse_args()
+#set the necessary parameters for parsing
+
 
 file_list = []
-file_list = sorted(glob.glob('./*.mdisp'))
+file_list = sorted(glob.glob(args.bins + '/*.mdisp'))
 #file_list = np.sort(file_list)
-numberOfItems = len(file_list)
-#create a list off all the .lopa files
 
 #merged_file = args.merged_file
 #create a path to the merged file
 
-cpuNumber = 42
+cpuNumber = 2
 #number of cores to use
+
 a = np.array([0,0])
 for filee in file_list:
     a = np.vstack([a,np.loadtxt(filee)])
@@ -22,11 +33,14 @@ for filee in file_list:
 binData = np.loadtxt('/home/cernetic/Documents/sorting/lopa-sorting/bins')
 data = np.loadtxt('medianSpectra')
 data2 = np.loadtxt('spectra')
+
+if len(data) != len(data2):
+    sys.exit("Lenghts of the spectra files do not match, exiting!")
+    
 average = np.array([0])
 average2 = np.array([0])
+
 for singleBin in binData: #for each bin
-    print('Doing bin: ')
-    print(singleBin)
     encounteredBinYet = False
     count = 0
     summ = 0
@@ -60,4 +74,4 @@ average = np.delete(average, (0), axis=0)
 average2 = np.delete(average2, (0), axis=0)
 binData = np.delete(binData, (0), axis=0)
 output = np.c_[binData, np.divide(average,average2)]
-np.savetxt('comparison100bin', output, fmt = '%.7e')
+np.savetxt(args.outputFile, output, fmt = '%.7e')
