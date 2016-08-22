@@ -42,12 +42,15 @@ def compare(data):
             elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
                 average = np.append(average,(summ / count))
                 break #once we leave the part of the file containing current bin, break and go to the next bin
+            elif (np.array_equal(line, data[-1])):
+                average = np.append(average,0)
                 
     average = np.delete(average, (0), axis=0)
     return average
 
 p = Pool(2)
-average = p.map(compare, [data, data2]) 
-#binData = np.delete(binData, (0), axis=0)
+average = p.map(compare, [data, data2])
 output = np.c_[binData, np.divide(average[0],average[1])]
 np.savetxt(args.outputFile, output, fmt = '%.7e')
+np.savetxt(args.spectra1 + '.averaged', np.c_[binData, average[0]])
+np.savetxt(args.spectra2 + '.averaged', np.c_[binData, average[1]])
