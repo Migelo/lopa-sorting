@@ -5,10 +5,8 @@ import sys
 from multiprocessing import Pool
 
 parser = argparse.ArgumentParser(description='Sort the spectra.')
-parser.add_argument('folder', metavar='FOLDER', type=str,
-                  help='FOLDER with .lopa files to be processed')
-parser.add_argument('bins', type=str,
-                   help='File defining the wawelenght bins')
+parser.add_argument('--folder', type=str, help='Folder with .lopa files to be processed')
+parser.add_argument('bins', type=str, help='File defining the wawelenght bins')
 parser.add_argument('subBins', help='File defining the subBins distribution.')
 parser.add_argument('cpuNumber', type=int, help='Number of CPUs to be used.')
 
@@ -16,13 +14,10 @@ args = parser.parse_args()
 #set the necessary parameters for parsing
 
 file_list = []
-file_list = sorted(glob.glob(args.folder+'/*.lopa'), reverse=True)
+file_list = sorted(glob.glob(str(args.folder)+'/*.lopa'), reverse=True)
 #file_list = np.sort(file_list)
 numberOfItems = len(file_list)
 #create a list off all the .lopa files
-
-merged_file = args.merged_file
-#create a path to the merged file
 
 cpuNumber = args.cpuNumber
 #number of cores to use
@@ -30,17 +25,19 @@ cpuNumber = args.cpuNumber
 floatFormat = '%.7e'
 #format for np.savetxt()
 
+depthList = range(1,83)  
+#arrays = np.loadtxt(file_list[0])
+#for array in arrays:
+#    if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0):
+#        depthList.append(int(array[1]))
+depthLength = len(str(np.max(depthList)))
+#get the list of all depth points from the first .lopa file
+#depthLength is created as a global variable so all functions can access it
+
+np.set_printoptions(precision=17)
+
 def merge_files(filename):
     currentFileIndex = 1.
-    depthList = []    
-    arrays = np.loadtxt(file_list[0])
-    for array in arrays:
-        if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0):
-            depthList.append(int(array[1]))
-    global depthLength
-    depthLength = len(str(np.max(depthList)))
-    #get the list of all depth points from the first .lopa file
-    #depthLength is created as a global variable so all functions can access it
 
     for filename in file_list:
         lastSegment = False #tells us whether we are in the last segment of the current file
@@ -78,8 +75,7 @@ def merge_files(filename):
 #iterate over the .lopa files as listed in file_list and fill the .segment files
 
     print('segmentFileList length: ' + str(len(segmentFileList)))
-    return depthList
-
+#    return depthList
 
 
 def bining(depthList):
@@ -112,7 +108,7 @@ def reducing(currentFile):
         encounteredBinYet = False
         for line in data: #for each line in a segmentFile
             outsideOfTheBin = True
-            if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin, append it
+            if (line[0] >= singleBin[0]) and ((line[0] + line[2]) <= singleBin[1]): #check if the wawelength of the current line is within the bin, append it
                 tempList = np.vstack([tempList, line])
                 outsideOfTheBin = False
                 encounteredBinYet = True
@@ -125,14 +121,15 @@ def reducing(currentFile):
                 sub_bins(args.subBins, singleBin, tempList, counter)
                 break #once we leave the part of the file containing current bin, break and go to the next segment file
     
-    
+
 def sub_bins(subBinFile, singleBin, tempList, counter):
-    subBins = np.loadtxt(subBinFile, unpack=True, ndmin = 1)
+    subBins = np.loadtxt(subBinFile)
     subBins = np.vstack([[0,0], subBins])
+    subBins = np.delete(subBins, (0), axis=0)
     subBinsLength = np.array([0.])
     for line in subBins: subBinsLength = np.append(subBinsLength, (singleBin[1]-singleBin[0]) * (line[1] - line[0]))
     subBinsLength = np.delete(subBinsLength, (0), axis=0)
-    subBins = np.delete(subBins, (0), axis=0)
+    subBinsLength = np.around(subBinsLength, 7)
     deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
     subbinArray = np.array([1,1,1])
     i = 0
@@ -140,7 +137,7 @@ def sub_bins(subBinFile, singleBin, tempList, counter):
         subBinSize = subBinsLength[i]
         deltaLambda += line[2]
         temp += line[1] * line[2] #opacity_i*deltaLambda_i
-        if (deltaLambda >= subBinSize):
+        if np.greater_equal(deltaLambda, subBinSize):
             i += 1
             end = beginning + deltaLambda
             temp /= deltaLambda
@@ -150,7 +147,7 @@ def sub_bins(subBinFile, singleBin, tempList, counter):
             end, temp = 0, 0
             if (np.array_equal(line,tempList[-1])):
                 subbinArray = np.delete(subbinArray, (0), axis=0)
-                f = open(str(counter).zfill(depthLength) + '.reduced', "a")
+                f = open(str(counter) + '.reduced', "a")
                 np.savetxt(f, subbinArray, fmt = floatFormat)
                 f.close()
         elif (np.array_equal(line,tempList[-1])):
@@ -159,7 +156,7 @@ def sub_bins(subBinFile, singleBin, tempList, counter):
             deltaLambda = 0
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             subbinArray = np.delete(subbinArray, (0), axis=0)
-            f = open(str(counter).zfill(depthLength) + '.reduced', "a")
+            f = open(str(counter) + '.reduced', "a")
             np.savetxt(f, subbinArray, fmt = floatFormat)
             f.close()
 
@@ -239,6 +236,6 @@ def deleteOverlapping(tempList, fileName):
                 tempTempList = np.vstack([tempTempList, [line]])
     tempList = np.delete(tempTempList, (0), axis=0)
     return tempList
-    
-depthList = merge_files(file_list)
+
+#merge_files(file_list)
 bining(depthList)
