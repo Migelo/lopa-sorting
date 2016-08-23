@@ -1,6 +1,5 @@
 import numpy as np
 import argparse
-import sys
 from multiprocessing import Pool
 
 
@@ -8,7 +7,7 @@ parser = argparse.ArgumentParser(description='Compare 2 spectra files.')
 parser.add_argument('spectra1', help='First spectra, the one that will be devided.', type=str)
 parser.add_argument('spectra2', help='Second spectra, the one we will devide BY.', type=str)
 parser.add_argument('bins', help='Bins on which the comparison should be made, should be the same file as the used in reducing the binned spectra.', type=str)
-parser.add_argument('outputFile', type=str, help='Set the output file.')
+#parser.add_argument('outputFile', type=str, help='Set the output file.')
 args = parser.parse_args()
 #set the necessary parameters for parsing
 
@@ -82,6 +81,6 @@ p = Pool(cpuNumber)
 #compare(data2)
 average = p.map(compare, [data, data2])
 output = np.c_[binData, np.divide(average[0],average[1])]
-np.savetxt(args.outputFile, output, fmt = '%.7e')
+np.savetxt(args.outputFile + 'Comparison', output, fmt = '%.7e')
 np.savetxt(args.spectra1 + '.averaged', np.c_[binData, average[0]])
 np.savetxt(args.spectra2 + '.averaged', np.c_[binData, average[1]])

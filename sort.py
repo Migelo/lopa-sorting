@@ -140,18 +140,21 @@ def sub_bins(subBinFile, singleBin, tempList, counter):
         if np.greater_equal(deltaLambda, subBinSize):
             i += 1
             end = beginning + deltaLambda
+            if (np.array_equal(line,tempList[-1])): end = singleBin[1]
             temp /= deltaLambda
             deltaLambda = 0
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             beginning = end
             end, temp = 0, 0
             if (np.array_equal(line,tempList[-1])):
+                end = singleBin[1]
                 subbinArray = np.delete(subbinArray, (0), axis=0)
                 f = open(str(counter) + '.reduced', "a")
                 np.savetxt(f, subbinArray, fmt = floatFormat)
                 f.close()
         elif (np.array_equal(line,tempList[-1])):
-            end = beginning + deltaLambda
+#            end = beginning + deltaLambda
+            end = singleBin[1]
             temp /= deltaLambda
             deltaLambda = 0
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
