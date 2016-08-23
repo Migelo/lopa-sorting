@@ -1,5 +1,6 @@
 import numpy as np
 import argparse
+import sys
 from multiprocessing import Pool
 
 
@@ -14,41 +15,71 @@ args = parser.parse_args()
 cpuNumber = 2
 #number of cores to use
 
-
+print('Loading files.')
 binData = np.loadtxt(args.bins)
 data = np.loadtxt(args.spectra1)
 data2 = np.loadtxt(args.spectra2)
-
+print('Files loaded!')
     
 average = np.array([0])
-average2 = np.array([0])
 
-def compare(data):
+def compare(data):    
     average = np.array([0])
     global binData
-    for singleBin in binData: #for each bin
-        encounteredBinYet = False
-        count = 0
-        summ = 0
-        for line in data:
-            outsideOfTheBin = True
-            if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin
-                count += 1
-                summ += line[1]
-                outsideOfTheBin = False
-                encounteredBinYet = True
-                if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted                   
+    summ, count, i, j = 0, 0, 0, 0
+    spectraLength = len(data)
+    while i <= spectraLength - 1:
+        if j == len(binData): break
+        if (data[i][0] >= binData[j][0]) and ((data[i][0]) < binData[j][1]):
+            count += 1
+            summ += data[i][1]
+            i += 1
+            if i == spectraLength - 1:
                     average = np.append(average,(summ / count))
-            elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
+                    print('does this ever happen?')
+                    for k in range(j+1, len(binData)):
+                        average = np.append(average,0)
+                    break
+        elif data[i][0] < binData[j][0]:
+            i += 1
+        elif data[i][0] >= binData[j][0]:
+            j += 1
+#            print(np.around(float(i)/spectraLength,4))
+            if summ > 0:
                 average = np.append(average,(summ / count))
-                break #once we leave the part of the file containing current bin, break and go to the next bin
-            elif (np.array_equal(line, data[-1])):
-                average = np.append(average,0)
-                
+                print(binData[j])
+            else: average = np.append(average,(0))
+            summ, count = 0, 0
     average = np.delete(average, (0), axis=0)
     return average
 
-p = Pool(2)
+                
+                
+#    for singleBin in binData: #for each bin
+#        print('In bin: ')
+#        print(singleBin)
+#        encounteredBinYet = False
+#        count = 0
+#        summ = 0
+#        for line in data:
+#            outsideOfTheBin = True
+#            if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin
+#                count += 1
+#                summ += line[1]
+#                outsideOfTheBin = False
+#                encounteredBinYet = True
+#                if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted                   
+#                    average = np.append(average,(summ / count))
+#            elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
+#                average = np.append(average,(summ / count))
+#                break #once we leave the part of the file containing current bin, break and go to the next bin
+#            elif (np.array_equal(line, data[-1])):
+#                average = np.append(average,0)
+#    average = np.delete(average, (0), axis=0)
+#    return average
+
+p = Pool(cpuNumber)
+#compare(data2)
 average = p.map(compare, [data, data2])
 output = np.c_[binData, np.divide(average[0],average[1])]
 np.savetxt(args.outputFile, output, fmt = '%.7e')
