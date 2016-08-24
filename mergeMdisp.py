@@ -9,6 +9,7 @@ args = parser.parse_args()
 
 file_list = sorted(glob.glob(args.folder + '/*.mdisp'))
 
+print('Merging!')
 a = np.array([0,0])
 for filee in file_list:
     a = np.vstack([a,np.loadtxt(filee)])

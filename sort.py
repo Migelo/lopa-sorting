@@ -149,17 +149,16 @@ def sub_bins(subBinFile, singleBin, tempList, counter):
             if (np.array_equal(line,tempList[-1])):
                 end = singleBin[1]
                 subbinArray = np.delete(subbinArray, (0), axis=0)
-                f = open(str(counter) + '.reduced', "a")
+                f = open(str(counter) + '.reduced' + args.subBins.split('s')[-1], "a")
                 np.savetxt(f, subbinArray, fmt = floatFormat)
                 f.close()
         elif (np.array_equal(line,tempList[-1])):
-#            end = beginning + deltaLambda
             end = singleBin[1]
             temp /= deltaLambda
             deltaLambda = 0
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             subbinArray = np.delete(subbinArray, (0), axis=0)
-            f = open(str(counter) + '.reduced', "a")
+            f = open(str(counter) + '.reduced' + args.subBins.split('s')[-1], "a")
             np.savetxt(f, subbinArray, fmt = floatFormat)
             f.close()
 
@@ -171,6 +170,27 @@ def sort_array(array, column, removeHeader):
     return array
   
 def write_array(array, fileName, removeHeader = 0, resetTo = 0):
+    """Deletes the header of the array before writing it to the disk.
+
+    Writes the array as fileName while removing removeHeader lines from array and returning resetTo.
+
+    Parameters
+    ----------
+    array : np.array
+        Array to be written.
+    fileName : str
+        File to write to.
+    removeHeader : int
+        Number of header lines to delete before writing.
+    resetTo : int/float/np.array...
+        Returns this object.
+
+    Returns
+    -------
+    resetTo
+        Returns the object specified in arguments, by default it is integer 0.
+
+    """
     if removeHeader > 0:
         for i in range(0, removeHeader):
             array = np.delete(array, (0), axis=0)
@@ -182,6 +202,21 @@ def write_array(array, fileName, removeHeader = 0, resetTo = 0):
     return array
 
 def deltaLambda(currentFile):
+    """Calculates the deltaLambda for the given lopa file.
+
+    Calculates the difference in wawelength in two adjancent data points in the given lopa file.
+
+    Parameters
+    ----------
+    currentFile : string
+        name of the file for deltaLambda calculations
+
+    Returns
+    -------
+    none
+        Overwrites the given.
+
+    """
     print('Delta lambda calculations for: ' + str(currentFile))
     workBuffer = np.loadtxt(currentFile,comments=None)
     #sortedWorkBuffer = workBuffer[np.argsort(workBuffer[:,0])] #sort by the first column (wavelenghts)
