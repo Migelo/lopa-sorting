@@ -46,5 +46,5 @@ module unload $MODULES
 
 spectraFilename="spectra"$currentFile"sub"
 python /home/cernetic/Documents/sorting/lopa-sorting/mergeMdisp.py mdisp/ /home/cernetic/Desktop/$spectraFilename
-rm -rf ctrl-* JOB-* freq*log mdisp/* lopa/*
+rm -rf ctrl-* JOB-* freq*log mdisp* lopa*
 python /home/cernetic/Documents/sorting/lopa-sorting/mdispCompare.py /home/cernetic/Documents/sorting/lopa-sorting/bins /home/cernetic/Desktop/$spectraFilename /home/cernetic/Desktop/spectra
