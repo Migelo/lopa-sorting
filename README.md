@@ -24,5 +24,3 @@ Explanation:
 * mergeLopa.py - merges lopa files into segment files which represent one depthPoint
 * mergeMdisp - merges mdisp files into a single file
 * sory.py - reduces the segment files to subBins
-
-blah-balh
