@@ -131,12 +131,12 @@ def deltaLambda(currentFile):
     print('Delta lambda calculations for: ' + str(currentFile))
     sortedWorkBuffer = np.loadtxt(currentFile,comments=None)
     bufferPosition = 0
-    deltaLambdaList = np.array([])
+    deltaLambdaList = []
     for line in sortedWorkBuffer:
         if bufferPosition <= len(sortedWorkBuffer) - 2:
-            deltaLambdaList = np.append(deltaLambdaList, (abs(sortedWorkBuffer[bufferPosition+1][0] - line[0])))
+            deltaLambdaList.append(abs(sortedWorkBuffer[bufferPosition+1][0] - line[0]))
             bufferPosition = bufferPosition + 1
-    deltaLambdaList = np.append(deltaLambdaList, 0)
+    deltaLambdaList.append(0)
     sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
     np.savetxt(currentFile,sortedWorkBuffer, fmt = floatFormat)
     pass

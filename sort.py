@@ -75,12 +75,11 @@ def reducing(currentFile):
 
 def sub_bins(subBinFile, singleBin, tempList, counter):
     subBins = np.loadtxt(subBinFile)
-    subBins = np.vstack([[0,0], subBins])
-    subBins = np.delete(subBins, (0), axis=0)
     subBinsLength = np.array([0.])
     for line in subBins: subBinsLength = np.append(subBinsLength, (singleBin[1]-singleBin[0]) * (line[1] - line[0]))
     subBinsLength = np.delete(subBinsLength, (0), axis=0)
     subBinsLength = np.around(subBinsLength, 7)
+    subBinsLength = subBinsLength[::-1]
     deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
     subbinArray = np.array([1,1,1])
     i = 0
@@ -91,7 +90,7 @@ def sub_bins(subBinFile, singleBin, tempList, counter):
         if np.greater_equal(deltaLambda, subBinSize):
             i += 1
             end = beginning + deltaLambda
-            if (np.array_equal(line,tempList[-1])): end = singleBin[1]
+            if (np.array_equal(line,tempList[-1])): end = singleBin[1] # set end to the end of the bin if we are in the last line
             temp /= deltaLambda
             deltaLambda = 0
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
@@ -112,6 +111,8 @@ def sub_bins(subBinFile, singleBin, tempList, counter):
             f = open(str(counter) + '.r' + args.subBins.split('s')[-1], "a")
             np.savetxt(f, subbinArray, fmt = floatFormat)
             f.close()
+
+
 
 def sort_array(array, column, removeHeader):
     if removeHeader > 0:
