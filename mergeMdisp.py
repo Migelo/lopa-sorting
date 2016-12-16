@@ -18,9 +18,12 @@ for filee in file_list:
     to_merge = []
     for line in mdisp:
         line=line.split()
-        if str(line[-1]).split("-")[0][-1] != "E":
+        if str(line[-1]).split("-")[0][-1] != "E" and str(line[-1]) != 'NaN':
             line[-1] = float(str(line[-1]).split("-")[0] + "E-" + str(line[-1]).split("-")[-1])
             #print type(line)
+        elif str(line[-1]) == 'NaN':
+            print line
+            line[-1] = 0
         merged.append(line)
         i +=1
 #    a = np.vstack([a,np.loadtxt(filee)])

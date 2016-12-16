@@ -74,35 +74,64 @@ def reducing(currentFile):
     
 
 def sub_bins(subBinFile, singleBin, tempList, counter):
+    subBinsBorders = []
     subBins = np.loadtxt(subBinFile)
     subBinsLength = np.array([0.])
     for line in subBins: subBinsLength = np.append(subBinsLength, (singleBin[1]-singleBin[0]) * (line[1] - line[0]))
     subBinsLength = np.delete(subBinsLength, (0), axis=0)
     subBinsLength = np.around(subBinsLength, 7)
-    subBinsLength = subBinsLength[::-1]
+    
+    """Create list of wavelengths which split the bin into subBins"""
+    i=0
+    while i < len(subBinsLength):
+        if i==0:
+            subBinsBorders.append([singleBin[0], singleBin[0] + subBinsLength[0]])
+            i += 1
+        subBinsBorders.append([subBinsBorders[i-1][-1], subBinsBorders[i-1][-1] + subBinsLength[i]])
+        i += 1
+
+    """Take care of the opacity values at the subBin and bin borders"""
+    tempListList = tempList.tolist()
+    if not np.equal(tempListList[0][0], singleBin[0]): tempListList.insert(0, [singleBin[0], tempListList[0][1], tempListList[0][0]-singleBin[0]])
+    tempListList[-1][-1] = singleBin[1]- tempListList[-1][0]
+    deltaLambda = subBinsBorders[0][0]
+    i, j = 0, 0
+    while i < len(tempListList)-1:
+        if deltaLambda + tempListList[i][2] > subBinsBorders[j][-1] and  j+1 < len(subBinsBorders):
+            tempListList[i][2] = ((subBinsBorders[j][-1] - deltaLambda))
+            tempListList.insert(i+1,[tempListList[i][2]+tempListList[i][0], tempListList[i][1], (tempListList[i+1][0] - subBinsBorders[j][-1])])
+            j += 1
+            deltaLambda = subBinsBorders[j][0]
+        else:
+            deltaLambda += tempListList[i][2]            
+        i += 1
+
+            
+    np.savetxt(str(tempListList[0][0]), tempListList, fmt = floatFormat)
     deltaLambda, temp, beginning, end = 0, 0, singleBin[0], 0
     subbinArray = np.array([1,1,1])
     i = 0
-    for line in tempList: #templist contains one bin
+    for line in tempListList: #tempListList contains one bin
         subBinSize = subBinsLength[i]
         deltaLambda += line[2]
         temp += line[1] * line[2] #opacity_i*deltaLambda_i
-        if np.greater_equal(deltaLambda, subBinSize):
+
+        if np.isclose(deltaLambda, subBinSize):
             i += 1
             end = beginning + deltaLambda
-            if (np.array_equal(line,tempList[-1])): end = singleBin[1] # set end to the end of the bin if we are in the last line
+            if (np.array_equal(line,tempListList[-1])): end = singleBin[1] # set end to the end of the bin if we are in the last line
             temp /= deltaLambda
             deltaLambda = 0
             subbinArray = np.vstack([subbinArray,[beginning, end, temp]])
             beginning = end
             end, temp = 0, 0
-            if (np.array_equal(line,tempList[-1])):
+            if (np.array_equal(line,tempListList[-1])):
                 end = singleBin[1]
                 subbinArray = np.delete(subbinArray, (0), axis=0)
                 f = open(str(counter) + '.r' + args.subBins.split('s')[-1], "a")
                 np.savetxt(f, subbinArray, fmt = floatFormat)
                 f.close()
-        elif (np.array_equal(line,tempList[-1])):
+        elif (np.array_equal(line,tempListList[-1])):
             end = singleBin[1]
             temp /= deltaLambda
             deltaLambda = 0

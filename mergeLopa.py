@@ -5,7 +5,6 @@ from multiprocessing import Pool
 
 parser = argparse.ArgumentParser(description='Sort the spectra.')
 parser.add_argument('folder', type=str, help='Folder with .lopa files to be processed')
-parser.add_argument('bins', type=str, help='File defining the wawelenght bins')
 parser.add_argument('cpuNumber', type=int, help='Number of CPUs to be used.')
 
 args = parser.parse_args()
