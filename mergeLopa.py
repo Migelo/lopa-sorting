@@ -8,6 +8,8 @@ parser.add_argument('folder', type=str, help='Folder with .lopa files to be proc
 args = parser.parse_args()
 #set the necessary parameters for parsing
 
+###############################################################################
+
 def sort_array(array, column, removeHeader):
     if removeHeader > 0:
         for i in range(0, removeHeader):
@@ -55,18 +57,13 @@ def deleteOverlapping(tempList, fileName):
         Array without the overlapping parts.
 
     """
-    # tempList = np.delete(tempList, (0), axis=0)
-    # tempList = np.delete(tempList, (0), axis=0)
-    # first_line = tempList[0]
-    # tempList.pop(0)
+
     if fileName == 0: specialPosition = 0
     elif fileName == len(file_list)-1: specialPosition = -1
     else: specialPosition = 1
     fileName = int(file_list[fileName].split('/')[-1].split('.')[-2])
-    # print fileName
     minimum = fileName - 5.
     maximum = fileName + 5.
-    #print fileName, minimum, maximum
 
     if specialPosition == 1:
         tempTempList = [ line for line in tempList if (line[0] < maximum) and (line[0] > minimum)]
@@ -75,11 +72,11 @@ def deleteOverlapping(tempList, fileName):
     elif specialPosition == 0:
         tempTempList = [ line for line in tempList if (line[0] > minimum)]
 
-    # tempTempList.insert(0, first_line)
     return tempTempList
 
+###############################################################################    
+    
 file_list = []
-#file_list = sorted(glob.glob('/scratch/cernetic/testRun/'+str(args.folder)+'/*.lopa'), reverse=True)
 file_list = sorted(glob.glob(str(args.folder)+'/*.lopa'), reverse=True)
 #create a list off all the .lopa files
 
@@ -98,9 +95,6 @@ depthLength = len(str(np.max(depthList)))
 
 """Load the files. Each item in data contains one lopa file"""
 data = []
-segments = []
-
-for item in depthList: segments.insert(0, [])
 
 print "Loading files"
 for item in file_list:
@@ -110,6 +104,8 @@ print "Files loaded"
 
 """Walk over the already loaded lopa file"""
 file_number = 0
+segments = []
+for item in depthList: segments.insert(0, [])
 for item in data:
     segment = -1
     segment_temp = []
@@ -122,7 +118,6 @@ for item in data:
                 for itemm in segment_temp: segments[segment].append(itemm)
                 segment_temp = []
             segment += 1
-            # print "segment: ", segment
         else:
             segment_temp.append(line)
             if line[0]==item[-1][0]:
