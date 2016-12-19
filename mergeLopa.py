@@ -81,8 +81,6 @@ def deleteOverlapping(tempList, fileName):
 file_list = []
 #file_list = sorted(glob.glob('/scratch/cernetic/testRun/'+str(args.folder)+'/*.lopa'), reverse=True)
 file_list = sorted(glob.glob(str(args.folder)+'/*.lopa'), reverse=True)
-file_list=list(file_list[:3])
-numberOfItems = len(file_list)
 #create a list off all the .lopa files
 
 firstFile = np.loadtxt(file_list[int(len(file_list)/2)])
@@ -107,7 +105,6 @@ for item in depthList: segments.insert(0, [])
 print "Loading files"
 for item in file_list:
     print "File: ", item
-    # data.append(deleteOverlapping(np.loadtxt(item).tolist(), item))
     data.append(np.loadtxt(item).tolist())
 print "Files loaded"
 
