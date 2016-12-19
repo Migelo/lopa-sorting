@@ -1,76 +1,12 @@
 import numpy as np
 import argparse
 import glob
-from multiprocessing import Pool
 
 parser = argparse.ArgumentParser(description='Sort the spectra.')
 parser.add_argument('folder', type=str, help='Folder with .lopa files to be processed')
-parser.add_argument('cpuNumber', type=int, help='Number of CPUs to be used.')
 
 args = parser.parse_args()
 #set the necessary parameters for parsing
-
-file_list = []
-file_list = sorted(glob.glob(str(args.folder)+'/*.lopa'), reverse=True)
-numberOfItems = len(file_list)
-#create a list off all the .lopa files
-
-cpuNumber = args.cpuNumber
-#number of cores to use
-
-floatFormat = '%.7e'
-#format for np.savetxt()
-
-depthList = range(1,83)  
-#arrays = np.loadtxt(file_list[0])
-#for array in arrays:
-#    if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0):
-#        depthList.append(int(array[1]))
-depthLength = len(str(np.max(depthList)))
-#get the list of all depth points from the first .lopa file
-#depthLength is created as a global variable so all functions can access it
-
-np.set_printoptions(precision=17)
-
-def merge_files(filename):
-    currentFileIndex = 1.
-    for filename in file_list:
-        lastSegment = False #tells us whether we are in the last segment of the current file
-        print(filename)
-        print(str('%.2f'%(currentFileIndex/float(numberOfItems)*100)) + '%')
-        currentFileIndex = currentFileIndex + 1.
-        #progress bar
-        
-        tempList = np.array([[0,0],[0,0]]) #define the array to which we later append the data, it is already populated, otherwise we cannot append an array with a size of (2,1) to it
-        arrays = np.loadtxt(filename) #load the lopa file
-
-        for array in arrays: #walk over the lopa file
-            if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0): #check whether we are in the header line
-                if array[1] == depthList[-1]: #special case if we are in the last segment of the lopa file
-                    lastSegment = True
-                    currentFile = str(int(array[1])-1).zfill(depthLength) + '.segment'
-                    tempList = deleteOverlapping(tempList, filename)
-                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
-                    currentFile = str(int(array[1])).zfill(depthLength) + '.segment'
-                elif int(array[1] != 1):
-                    currentFile = str(int(array[1])-1).zfill(depthLength) + '.segment'
-                    tempList = deleteOverlapping(tempList, filename)
-                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])
-            else:
-                tempList = np.append(tempList, [array], 0) #if we are not in the header, append current line
-                if (lastSegment == True) and (np.array_equal(array, arrays[-1])): #if we are in the last segment AND in the last line, write to file
-                    tempList = deleteOverlapping(tempList, filename)
-                    tempList = write_array(tempList, currentFile, 0, [[0,0],[0,0]])        
-        
-    segmentFileList = [str(item).zfill(depthLength) + '.segment' for item in depthList]
-    p = Pool(cpuNumber)
-    p.map(deltaLambda, segmentFileList)
-    #sort the files and generate the deltaLambda values for each line
-#create a separate file for each depth point as listed in depthList
-#iterate over the .lopa files as listed in file_list and fill the .segment files
-
-    print('segmentFileList length: ' + str(len(segmentFileList)))
-
 
 def sort_array(array, column, removeHeader):
     if removeHeader > 0:
@@ -79,66 +15,27 @@ def sort_array(array, column, removeHeader):
     array = array[np.argsort(array[:,column])]
     return array
   
-def write_array(array, fileName, removeHeader = 0, resetTo = 0):
-    """Deletes the header of the array before writing it to the disk.
 
-    Writes the array as fileName while removing removeHeader lines from array and returning resetTo.
+def deltaLambda(segment):
+    """Calculates the deltaLambda for the given segment.
 
-    Parameters
-    ----------
-    array : np.array
-        Array to be written.
-    fileName : str
-        File to write to.
-    removeHeader : int
-        Number of header lines to delete before writing.
-    resetTo : int/float/np.array...
-        Returns this object.
-
-    Returns
-    -------
-    resetTo
-        Returns the object specified in arguments, by default it is integer 0.
-
-    """
-    if removeHeader > 0:
-        for i in range(0, removeHeader):
-            array = np.delete(array, (0), axis=0)
-    f = open(fileName, "a")
-    np.savetxt(f, array, fmt = floatFormat)
-    f.close()
-    if resetTo != 0:
-        array = np.array(resetTo)
-    return array
-
-def deltaLambda(currentFile):
-    """Calculates the deltaLambda for the given lopa file.
-
-    Calculates the difference in wawelength in two adjancent data points in the given lopa file.
+    Calculates the difference in wawelength in two adjancent data points in the segment.
 
     Parameters
     ----------
-    currentFile : string
-        name of the file for deltaLambda calculations
+    segment : list
+        list containing the current segment
 
     Returns
     -------
-    none
-        Overwrites the given.
+    list
+        List with deltaLambdas as the third column.
 
     """
-    print('Delta lambda calculations for: ' + str(currentFile))
-    sortedWorkBuffer = np.loadtxt(currentFile,comments=None)
-    bufferPosition = 0
-    deltaLambdaList = []
-    for line in sortedWorkBuffer:
-        if bufferPosition <= len(sortedWorkBuffer) - 2:
-            deltaLambdaList.append(abs(sortedWorkBuffer[bufferPosition+1][0] - line[0]))
-            bufferPosition = bufferPosition + 1
-    deltaLambdaList.append(0)
-    sortedWorkBuffer = np.c_[sortedWorkBuffer, deltaLambdaList] #append the column with delta lambda values
-    np.savetxt(currentFile,sortedWorkBuffer, fmt = floatFormat)
-    pass
+    for position in range(len(segment)-1):
+        segment[position].append(segment[position][0] - segment[position+1][0])
+    #segment[-1].append(segment[-2][-1])
+    return segment
 
 def deleteOverlapping(tempList, fileName):
     """Deletes the overlapping parts of a .lopa file.
@@ -158,29 +55,93 @@ def deleteOverlapping(tempList, fileName):
         Array without the overlapping parts.
 
     """
-    tempList = np.delete(tempList, (0), axis=0)
-    tempList = np.delete(tempList, (0), axis=0)
-    if fileName == file_list[0]: specialPosition = 0
-    elif fileName == file_list[-1]: specialPosition = -1
+    # tempList = np.delete(tempList, (0), axis=0)
+    # tempList = np.delete(tempList, (0), axis=0)
+    # first_line = tempList[0]
+    # tempList.pop(0)
+    if fileName == 0: specialPosition = 0
+    elif fileName == len(file_list)-1: specialPosition = -1
     else: specialPosition = 1
-    fileName = int(fileName.split('/')[-1].split('.')[0])
+    fileName = int(file_list[fileName].split('/')[-1].split('.')[-2])
+    # print fileName
     minimum = fileName - 5.
     maximum = fileName + 5.
-    tempTempList = np.array([0,0])
+    #print fileName, minimum, maximum
 
     if specialPosition == 1:
-        for line in tempList:
-            if (line[0] < maximum) and (line[0] > minimum):
-                tempTempList = np.vstack([tempTempList, [line]])
+        tempTempList = [ line for line in tempList if (line[0] < maximum) and (line[0] > minimum)]
     elif specialPosition == -1:
-        for line in tempList:
-            if line[0] < maximum:
-                tempTempList = np.vstack([tempTempList, [line]])        
+        tempTempList = [ line for line in tempList if (line[0] < maximum)]      
     elif specialPosition == 0:
-        for line in tempList:
-            if line[0] > minimum:
-                tempTempList = np.vstack([tempTempList, [line]])
-    tempList = np.delete(tempTempList, (0), axis=0)
-    return tempList
+        tempTempList = [ line for line in tempList if (line[0] > minimum)]
 
-merge_files(file_list)
+    # tempTempList.insert(0, first_line)
+    return tempTempList
+
+file_list = []
+#file_list = sorted(glob.glob('/scratch/cernetic/testRun/'+str(args.folder)+'/*.lopa'), reverse=True)
+file_list = sorted(glob.glob(str(args.folder)+'/*.lopa'), reverse=True)
+file_list=list(file_list[:3])
+numberOfItems = len(file_list)
+#create a list off all the .lopa files
+
+firstFile = np.loadtxt(file_list[int(len(file_list)/2)])
+depth=0
+for array in firstFile:
+    if ((array[0] % 1) == 0) and ((array[1] % 1) == 0) and (int(array[1]) > 0): #check whether we are in the header line
+        depth += 1
+print("Number of depthpoints: " + str(depth))
+depthList = range(1,depth + 1)
+
+depthLength = len(str(np.max(depthList)))
+#get the list of all depth points from the first .lopa file
+#depthLength is created as a global variable so all functions can access it
+
+
+"""Load the files. Each item in data contains one lopa file"""
+data = []
+segments = []
+
+for item in depthList: segments.insert(0, [])
+
+print "Loading files"
+for item in file_list:
+    print "File: ", item
+    # data.append(deleteOverlapping(np.loadtxt(item).tolist(), item))
+    data.append(np.loadtxt(item).tolist())
+print "Files loaded"
+
+"""Walk over the already loaded lopa file"""
+file_number = 0
+for item in data:
+    segment = -1
+    segment_temp = []
+    for line in item:
+        if ((line[0] % 1) == 0) and ((line[1] % 1) == 0) and (int(line[1]) > 0):
+            if segment == -1:
+                pass
+            else:
+                segment_temp = deleteOverlapping(segment_temp, file_number)
+                for itemm in segment_temp: segments[segment].append(itemm)
+                segment_temp = []
+            segment += 1
+            # print "segment: ", segment
+        else:
+            segment_temp.append(line)
+            if line[0]==item[-1][0]:
+                segment_temp = deleteOverlapping(segment_temp, file_number)
+                for itemmm in segment_temp: segments[segment].append(itemmm)
+                segment_temp = []
+    file_number += 1
+
+"""Delta lambdas and writing files"""
+for segment in range(len(segments)):
+    segments[segment] = deltaLambda(segments[segment])
+    segments[segment][-1].append(segments[segment][-2][-1]) 
+    np.savetxt(str(segment + 1).zfill(depthLength) + '.segment', segments[segment])
+
+    #sort the files and generate the deltaLambda values for each line
+#create a separate file for each depth point as listed in depthList
+#iterate over the .lopa files as listed in file_list and fill the .segment files
+
+
