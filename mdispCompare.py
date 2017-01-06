@@ -16,28 +16,29 @@ cpuNumber = 2
 
 print('Loading files.')
 binData = np.loadtxt(args.bins)
+print('bins loaded')
 data = np.loadtxt(args.spectra1)
+print('first spectra loaded')
 data2 = np.loadtxt(args.spectra2)
-print('Files loaded, starting comparison!')
+print('All files loaded, starting comparison!')
     
-average = np.array([0])
 
 def compare(data):
-    average = np.array([0])
+    average = []
     global binData
     summ, count, i, j = 0, 0, 0, 0
     spectraLength = len(data)
-    while i <= spectraLength - 1:
+    while i < spectraLength:
         if j == len(binData): break
         if (data[i][0] >= binData[j][0]) and ((data[i][0]) < binData[j][1]):
             count += 1
             summ += data[i][1]
             i += 1
             if i == spectraLength - 1:
-                    average = np.append(average,(summ / count))
+                    average.append(summ / count)
 #                    print('does this ever happen?')
                     for k in range(j+1, len(binData)):
-                        average = np.append(average,0)
+                        average.append(0)
                     break
         elif data[i][0] < binData[j][0]:
             i += 1
@@ -45,11 +46,10 @@ def compare(data):
             j += 1
 #            print(np.around(float(i)/spectraLength,4))
             if summ > 0:
-                average = np.append(average,(summ / count))
+                average.append(summ / count)
 #                print(binData[j])
-            else: average = np.append(average,(0))
+            else: average.append(0)
             summ, count = 0, 0
-    average = np.delete(average, (0), axis=0)
     return average
 
                 

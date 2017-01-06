@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 import glob
+import os
 
 parser = argparse.ArgumentParser(description='Sort the spectra.')
 parser.add_argument('folder', type=str, help='Folder with .lopa files to be processed')
@@ -9,14 +10,6 @@ args = parser.parse_args()
 #set the necessary parameters for parsing
 
 ###############################################################################
-
-def sort_array(array, column, removeHeader):
-    if removeHeader > 0:
-        for i in range(0, removeHeader):
-            array = np.delete(array, (0), axis=0)
-    array = array[np.argsort(array[:,column])]
-    return array
-  
 
 def deltaLambda(segment):
     """Calculates the deltaLambda for the given segment.
@@ -35,7 +28,7 @@ def deltaLambda(segment):
 
     """
     for position in range(len(segment)-1):
-        segment[position].append(segment[position][0] - segment[position+1][0])
+        segment[position].append(segment[position+1][0] - segment[position][0])
     #segment[-1].append(segment[-2][-1])
     return segment
 
@@ -76,10 +69,19 @@ def deleteOverlapping(tempList, fileName):
 
 ###############################################################################    
     
-file_list = []
 file_list = sorted(glob.glob(str(args.folder)+'/*.lopa'), reverse=True)
 #create a list off all the .lopa files
 
+max_length = len(str(max([int(x.split('.lopa')[0].split('/')[-1]) for x in file_list])))
+for file_name in file_list:
+    wavelength = str((file_name.split('.lopa')[0]).split('/')[-1].zfill(max_length))
+    original_length = len((file_name.split('.lopa')[0]).split('/')[-1])
+    if original_length < max_length:
+        print file_name, file_name[:-5-original_length] + wavelength + '.lopa'
+        os.rename(file_name, file_name[:-5-original_length] + wavelength + '.lopa')
+
+file_list = sorted(glob.glob(str(args.folder)+'/*.lopa'), reverse=True)
+        
 firstFile = np.loadtxt(file_list[int(len(file_list)/2)])
 depth=0
 for array in firstFile:
@@ -128,7 +130,7 @@ for item in data:
 
 """Delta lambdas and writing files"""
 for segment in range(len(segments)):
-    segments[segment] = deltaLambda(segments[segment])
+    segments[segment] = deltaLambda(segments[segment][::-1])
     segments[segment][-1].append(segments[segment][-2][-1]) 
     np.savetxt(str(segment + 1).zfill(depthLength) + '.segment', segments[segment])
 

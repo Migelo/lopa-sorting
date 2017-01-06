@@ -1,6 +1,7 @@
 import numpy as np
 import glob
 import argparse
+import os
 
 parser = argparse.ArgumentParser(description='Merge .mdisp files.')
 parser.add_argument('folder', metavar='SPECTRA', help='Folder with the mdisp files.', type=str)
@@ -9,8 +10,18 @@ args = parser.parse_args()
 
 file_list = sorted(glob.glob(args.folder + '/*.mdisp'))
 
+max_length = len(str(max([int(x.split('.mdisp')[0].split('/')[-1]) for x in file_list])))
+for file_name in file_list:
+    wavelength = str((file_name.split('.mdisp')[0]).split('/')[-1].zfill(max_length))
+    original_length = len((file_name.split('.mdisp')[0]).split('/')[-1])
+    if original_length < max_length:
+        print file_name, file_name[:-6-original_length] + wavelength + '.mdisp'
+        os.rename(file_name, file_name[:-6-original_length] + wavelength + '.mdisp')
+
+file_list = sorted(glob.glob(args.folder + '/*.mdisp'))
+
+
 print('Merging!')
-#a = np.array([0,0])
 merged = []
 for filee in file_list:
     i = 0
@@ -20,17 +31,11 @@ for filee in file_list:
         line=line.split()
         if str(line[-1]).split("-")[0][-1] != "E" and str(line[-1]) != 'NaN':
             line[-1] = float(str(line[-1]).split("-")[0] + "E-" + str(line[-1]).split("-")[-1])
-            #print type(line)
         elif str(line[-1]) == 'NaN':
             print line
             line[-1] = 0
         merged.append(line)
         i +=1
-#    a = np.vstack([a,np.loadtxt(filee)])
-    #print filee
-#    merged.append(to_merge)
-#a = np.delete(a, (0), axis=0)
-#print merged
 i=0
 for line in merged:
     merged[i][0] = float(line[0])
