@@ -8,9 +8,8 @@ parser.add_argument('-interval', help='Size of the bin.', type=int)
 parser.add_argument('-n', help='Number of bins.', type=int)
 parser.add_argument('outputFile', type=str, help='Set the output file.')
 args = parser.parse_args()
-#set the necessary parameters for parsing
 
-bins = np.array([0,0])
+bins = np.array([0, 0])
 i = args.beginning
 if args.interval is not None:
     interval = args.interval
@@ -19,11 +18,11 @@ if args.interval is not None:
         bins = np.vstack([bins, [i, i + interval]])
         i += interval
 elif args.n is not None:
-    interval = 1./args.n
+    interval = 1. / args.n
     outputFormat = '%.4f'
     for j in range(0, args.n):
         bins = np.vstack([bins, [i, i + interval]])
         i += interval
 
 bins = np.delete(bins, (0), axis=0)
-np.savetxt(args.outputFile, bins, fmt = outputFormat)
+np.savetxt(args.outputFile, bins, fmt=outputFormat)
