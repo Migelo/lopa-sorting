@@ -52,30 +52,6 @@ def compare(data):
             summ, count = 0, 0
     return average
 
-                
-                
-#    for singleBin in binData: #for each bin
-#        print('In bin: ')
-#        print(singleBin)
-#        encounteredBinYet = False
-#        count = 0
-#        summ = 0
-#        for line in data:
-#            outsideOfTheBin = True
-#            if (line[0] >= singleBin[0]) and (line[0] <= singleBin[1]): #check if the wawelength of the current line is within the bin
-#                count += 1
-#                summ += line[1]
-#                outsideOfTheBin = False
-#                encounteredBinYet = True
-#                if (np.array_equal(line, data[-1])): #if we are on the last line, we must also sort the array otherwise it will go unsorted                   
-#                    average = np.append(average,(summ / count))
-#            elif ((outsideOfTheBin == True) and (encounteredBinYet == True)):
-#                average = np.append(average,(summ / count))
-#                break #once we leave the part of the file containing current bin, break and go to the next bin
-#            elif (np.array_equal(line, data[-1])):
-#                average = np.append(average,0)
-#    average = np.delete(average, (0), axis=0)
-#    return average
 
 p = Pool(cpuNumber)
 #compare(data2)

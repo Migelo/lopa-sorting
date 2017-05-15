@@ -29,9 +29,14 @@ for filee in file_list:
     to_merge = []
     for line in mdisp:
         line=line.split()
-        if str(line[-1]).split("-")[0][-1] != "E" and str(line[-1]) != 'NaN':
-            line[-1] = float(str(line[-1]).split("-")[0] + "E-" + str(line[-1]).split("-")[-1])
-        elif str(line[-1]) == 'NaN':
+        """Sometimes the exponent indicator 'E' will disappear from mdisp file, here we put it back"""
+        if '-' in line[-1] and 'E-' not in line[-1]:
+            line[-1] = line[-1].replace('-', 'E-')
+        elif '+' in line[-1] and 'E+' not in line[-1]:
+            line[-1] = line[-1].replace('+', 'E+')
+#        if str(line[-1]).split(line[-1][-3])[0][-1] != "E" and str(line[-1]) != 'NaN':
+#            line[-1] = float(str(line[-1]).split("-")[0] + "E-" + str(line[-1]).split("-")[-1])
+        if str(line[-1]) == 'NaN':
             print line
             line[-1] = 0
         merged.append(line)
