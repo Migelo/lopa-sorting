@@ -12,7 +12,7 @@ args = parser.parse_args()
 cpuNumber = 2
 
 print('Loading files.')
-binData = np.loadtxt(args.bins)
+binData = np.loadtxt(args.bins, ndmin=2)
 print('bins loaded')
 data = np.loadtxt(args.spectra1)
 print('first spectra loaded')
